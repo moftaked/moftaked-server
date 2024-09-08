@@ -12,10 +12,8 @@ export class DatabaseService {
     const connection = await this.pool.getConnection();
     try {
       const [rows] = await connection.query<T>(queryText, values);
-      console.log('returning rows...')
       return rows;
     } finally {
-      console.log('releasing connection...')
       connection.release();
     }
   }
