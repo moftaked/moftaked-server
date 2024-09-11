@@ -10,11 +10,13 @@ import { AuthService } from './auth.service';
 import { ZodValidationPipe } from 'src/ZodValidationPipe';
 import { SignInDto, signInSchema } from './dto/signInDto.dto';
 import { AuthGuard } from './auth.guard';
+import { ThrottlerGuard } from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @UseGuards(ThrottlerGuard)
   @Post('login')
   signIn(@Body(new ZodValidationPipe(signInSchema)) signInDto: SignInDto) {
     return this.authService.signIn(signInDto.username, signInDto.password);

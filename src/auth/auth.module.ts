@@ -6,6 +6,7 @@ import { UsersModule } from 'src/users/users.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthGuard } from './auth.guard';
+import { ThrottlerGuard } from '@nestjs/throttler';
 
 const jwtSecretFactory = (configService: ConfigService) => {
   return configService.get<string>('JWT_SECRET');
@@ -27,6 +28,7 @@ const jwtSecretFactory = (configService: ConfigService) => {
   controllers: [AuthController],
   providers: [
     AuthGuard,
+    ThrottlerGuard,
     AuthService,
     {
       provide: 'JWT_SECRET',

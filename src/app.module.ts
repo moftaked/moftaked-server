@@ -7,12 +7,17 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { BcryptModule } from './bcrypt/bcrypt.module';
 import { ClassesModule } from './classes/classes.module';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ThrottlerModule.forRoot([{
+      ttl: 60000,
+      limit: 5
+    }]),
     StudentsModule,
     AuthModule,
     UsersModule,
