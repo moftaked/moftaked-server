@@ -9,14 +9,6 @@ import { Role } from './entities/role.entity';
 export class UsersService {
   constructor(private readonly databaseService: DatabaseService) {}
 
-  create(createUserDto: CreateUserDto) {
-    return 'This action adds a new user';
-  }
-
-  findAll() {
-    return `This action returns all users`;
-  }
-
   async findOne(username: string) {
     const userTableResults = await this.databaseService.executeQuery<User[]>(
       'select account_id, username, password, real_name from accounts where username = ?',
@@ -26,20 +18,21 @@ export class UsersService {
     return userTableResults[0];
   }
 
-  async getRoles(accountId: number) {
+  async getRoles(id: string) {
     const roles = await this.databaseService.executeQuery<Role[]>(
       'select class_id, role from roles where account_id = ?',
-      [accountId],
+      [id],
     );
 
     return roles;
   }
 
-  // update(id: number, updateUserDto: UpdateUserDto) {
-  //   return `This action updates a #${id} user`;
-  // }
+  async getClasses(id: string) {
+    const classes = await this.databaseService.executeQuery(
+      'select class_id, class_name from roles inner join classes using(class_id) where account_id = ?;',
+      [id]
+    );
 
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+    return classes;
   }
 }
