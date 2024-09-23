@@ -8,9 +8,14 @@ import { UsersModule } from './users/users.module';
 import { BcryptModule } from './bcrypt/bcrypt.module';
 import { ClassesModule } from './classes/classes.module';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { ServeStaticModule } from '@nestjs/serve-static'
+import { join } from 'path';
 
 @Module({
   imports: [
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'client/browser')
+    }),
     ConfigModule.forRoot({
       isGlobal: true,
     }),
@@ -24,7 +29,6 @@ import { ThrottlerModule } from '@nestjs/throttler';
     BcryptModule,
     ClassesModule,
   ],
-  controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
