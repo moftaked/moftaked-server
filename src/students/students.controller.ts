@@ -5,7 +5,6 @@ import {
   Body,
   Patch,
   Param,
-  Delete,
   UseGuards,
 } from '@nestjs/common';
 import { StudentsService } from './students.service';
@@ -15,7 +14,10 @@ import {
 } from './dto/create-student.dto';
 import { ZodValidationPipe } from 'src/ZodValidationPipe';
 import { AuthGuard } from 'src/auth/auth.guard';
-// import { UpdateStudentDto } from './dto/update-student.dto';
+import {
+  updateStudentSchema,
+  UpdateStudentDto,
+} from './dto/update-student.dto';
 
 @Controller('students')
 @UseGuards(AuthGuard)
@@ -37,16 +39,15 @@ export class StudentsController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.studentsService.findOne(+id);
+    return this.studentsService.findOne(id);
   }
 
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateStudentDto: UpdateStudentDto) {
-  //   return this.studentsService.update(+id, updateStudentDto);
-  // }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.studentsService.remove(+id);
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateStudentSchema))
+    student: UpdateStudentDto,
+  ) {
+    return this.studentsService.update(id, student);
   }
 }
