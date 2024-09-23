@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
 // import { UpdateUserDto } from './dto/update-user.dto';
 import { DatabaseService } from 'src/database/database.service';
 import { User } from './entities/user.entity';
@@ -28,11 +27,11 @@ export class UsersService {
   }
 
   async getClasses(id: string) {
-    const classes = await this.databaseService.executeQuery(
+    const results = await this.databaseService.executeQuery(
       'select class_id, class_name from roles inner join classes using(class_id) where account_id = ?;',
-      [id]
+      [id],
     );
 
-    return classes;
+    return { results };
   }
 }
