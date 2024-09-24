@@ -2,6 +2,7 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { DatabaseService } from 'src/database/database.service';
@@ -133,5 +134,17 @@ export class StudentsService {
     } finally {
       connection.release();
     }
+  }
+
+  async delete(id: string) {
+    const result = await this.databaseService.executeQuery<ResultSetHeader>(
+      'delete from students where student_id = ?;',
+      [id]
+    );
+    if(result.affectedRows == 0)
+      throw new NotFoundException();
+    return {
+      affectedRows: result.affectedRows
+    };
   }
 }

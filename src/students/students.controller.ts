@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   UseGuards,
+  Delete,
 } from '@nestjs/common';
 import { StudentsService } from './students.service';
 import {
@@ -49,5 +50,10 @@ export class StudentsController {
     student: UpdateStudentDto,
   ) {
     return this.studentsService.update(id, student);
+  }
+
+  @Delete(':id')
+  delete(@Param('id') id: string) {
+    return this.studentsService.delete(id);
   }
 }
