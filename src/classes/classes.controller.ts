@@ -18,11 +18,6 @@ import { AuthGuard } from 'src/auth/auth.guard';
 export class ClassesController {
   constructor(private readonly classesService: ClassesService) {}
 
-  @Post()
-  create(@Body() createClassDto: CreateClassDto) {
-    return this.classesService.create(createClassDto);
-  }
-
   @Get()
   findAll() {
     return this.classesService.findAll();
@@ -36,15 +31,5 @@ export class ClassesController {
   @Get('/:id/students')
   getStudents(@Param('id') id: number) {
     return this.classesService.getStudents(id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateClassDto: UpdateClassDto) {
-    return this.classesService.update(+id, updateClassDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.classesService.remove(+id);
   }
 }
