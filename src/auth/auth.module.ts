@@ -21,7 +21,7 @@ const jwtSecretFactory = (configService: ConfigService) => {
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: '60m' }, // Example expiration time
+        signOptions: { expiresIn: '12h' }, 
       }),
       inject: [ConfigService],
     }),
