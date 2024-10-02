@@ -12,6 +12,9 @@ import { ClassesService } from './classes.service';
 import { CreateClassDto } from './dto/create-class.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { RolesDec } from 'src/auth/roles.decorator';
+import { Roles } from 'src/users/entities/role.entity';
+import { RolesGuard } from 'src/auth/roles.guard';
 
 @Controller('classes')
 @UseGuards(AuthGuard)
@@ -29,6 +32,8 @@ export class ClassesController {
   }
 
   @Get('/:id/students')
+  @UseGuards(RolesGuard)
+  @RolesDec(Roles.teacher, Roles.leader, Roles.manager)
   getStudents(@Param('id') id: number) {
     return this.classesService.getStudents(id);
   }

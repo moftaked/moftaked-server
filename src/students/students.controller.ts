@@ -7,7 +7,10 @@ import {
   Param,
   UseGuards,
   Delete,
+  Req,
+  ForbiddenException,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { StudentsService } from './students.service';
 import {
   CreateStudentDto,
@@ -19,41 +22,75 @@ import {
   updateStudentSchema,
   UpdateStudentDto,
 } from './dto/update-student.dto';
+import { authorizedRequest, classId, reqUser } from 'src/types';
 
 @Controller('students')
 @UseGuards(AuthGuard)
 export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
 
+  checkPermissions(user: reqUser, class_id: number) {
+    const isAuthorized = user.roles.some((claimedRole) => {
+      console.log(`claimed role: ${claimedRole.class_id}, class id: ${class_id}`)
+      return claimedRole.class_id == class_id;
+    });
+    console.log(`is authorized: ${isAuthorized}`)
+    if(isAuthorized == false) 
+      throw new ForbiddenException();
+  }
+
+  async getClassesAndCheckPermissions(user: reqUser, student_id: number) {
+    const classIds = await this.studentsService.getClassIdsByStudentId(student_id);
+    const authorized = classIds.some((ClassId) => {
+      return user.roles.some((role) => {
+        return role.class_id == ClassId.class_id
+      })
+    })
+    return authorized;
+  }
+
   @Post()
-  create(
+  async create(
     @Body(new ZodValidationPipe(createStudentSchema))
     createStudentDto: CreateStudentDto,
+    @Req() request: authorizedRequest
   ) {
+    this.checkPermissions(request.user, createStudentDto.class_id);
     return this.studentsService.create(createStudentDto);
   }
 
-  @Get()
-  findAll() {
-    return this.studentsService.findAll();
-  }
-
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  async findOne(
+    @Param('id') id: number,
+    @Req() request: authorizedRequest
+  ) {
+    const authorized = await this.getClassesAndCheckPermissions(request.user, id);
+    if(authorized == false)
+      throw new ForbiddenException()
     return this.studentsService.findOne(id);
   }
 
   @Patch(':id')
-  update(
-    @Param('id') id: string,
+  async update(
+    @Param('id') id: number,
     @Body(new ZodValidationPipe(updateStudentSchema))
     student: UpdateStudentDto,
+    @Req() request: authorizedRequest
   ) {
+    const authorized = await this.getClassesAndCheckPermissions(request.user, id);
+    if(authorized == false)
+      throw new ForbiddenException()
     return this.studentsService.update(id, student);
   }
 
   @Delete(':id')
-  delete(@Param('id') id: string) {
+  async delete(
+    @Param('id') id: number,
+    @Req() request: authorizedRequest
+  ) {
+    const authorized = await this.getClassesAndCheckPermissions(request.user, id);
+    if(authorized == false)
+      throw new ForbiddenException()
     return this.studentsService.delete(id);
   }
 }
