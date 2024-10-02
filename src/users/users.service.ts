@@ -17,7 +17,7 @@ export class UsersService {
     return userTableResults[0];
   }
 
-  async getRoles(id: string) {
+  async getRoles(id: number) {
     const roles = await this.databaseService.executeQuery<Role[]>(
       'select class_id, role from roles where account_id = ?',
       [id],

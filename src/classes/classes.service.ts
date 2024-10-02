@@ -24,24 +24,30 @@ export class ClassesService {
     const students = await this.databaseService.executeQuery(
       `
       select 
-        student_id, 
-        student_name, 
+        person_id as student_id, 
+        person_name as student_name, 
         address, 
         group_concat(phone_number separator ', ') as phone_numbers,
         district,
         notes
-      from students 
+      from persons 
       inner join 
-        student_class using(student_id) 
+        person_class using(person_id) 
       left join 
-        phone_numbers using(student_id) 
-      where class_id = ? 
-      group by student_id;`,
+        phone_numbers using(person_id) 
+      where class_id = ? and person_class.type = 'student'
+      group by person_id;`,
       [id],
     );
 
     const metadata = await this.databaseService.executeQuery(
-      'select count(student_id) as count from student_class where class_id = ?',
+      `
+      select 
+        count(person_id) as count 
+      from 
+        person_class 
+      where 
+        class_id = ? and type = 'student';`,
       [id],
     );
     return { students, metadata };
