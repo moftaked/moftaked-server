@@ -10,7 +10,6 @@ import {
   Req,
   ForbiddenException,
 } from '@nestjs/common';
-import { Request } from 'express';
 import { StudentsService } from './students.service';
 import {
   CreateStudentDto,
@@ -22,7 +21,7 @@ import {
   updateStudentSchema,
   UpdateStudentDto,
 } from './dto/update-student.dto';
-import { authorizedRequest, classId, reqUser } from 'src/types';
+import { authorizedRequest, reqUser } from 'src/types';
 
 @Controller('students')
 @UseGuards(AuthGuard)
@@ -31,21 +30,19 @@ export class StudentsController {
 
   checkPermissions(user: reqUser, class_id: number) {
     const isAuthorized = user.roles.some((claimedRole) => {
-      console.log(`claimed role: ${claimedRole.class_id}, class id: ${class_id}`)
       return claimedRole.class_id == class_id;
     });
-    console.log(`is authorized: ${isAuthorized}`)
-    if(isAuthorized == false) 
-      throw new ForbiddenException();
+    if (isAuthorized == false) throw new ForbiddenException();
   }
 
   async getClassesAndCheckPermissions(user: reqUser, student_id: number) {
-    const classIds = await this.studentsService.getClassIdsByStudentId(student_id);
+    const classIds =
+      await this.studentsService.getClassIdsByStudentId(student_id);
     const authorized = classIds.some((ClassId) => {
       return user.roles.some((role) => {
-        return role.class_id == ClassId.class_id
-      })
-    })
+        return role.class_id == ClassId.class_id;
+      });
+    });
     return authorized;
   }
 
@@ -53,20 +50,19 @@ export class StudentsController {
   async create(
     @Body(new ZodValidationPipe(createStudentSchema))
     createStudentDto: CreateStudentDto,
-    @Req() request: authorizedRequest
+    @Req() request: authorizedRequest,
   ) {
     this.checkPermissions(request.user, createStudentDto.class_id);
     return this.studentsService.create(createStudentDto);
   }
 
   @Get(':id')
-  async findOne(
-    @Param('id') id: number,
-    @Req() request: authorizedRequest
-  ) {
-    const authorized = await this.getClassesAndCheckPermissions(request.user, id);
-    if(authorized == false)
-      throw new ForbiddenException()
+  async findOne(@Param('id') id: number, @Req() request: authorizedRequest) {
+    const authorized = await this.getClassesAndCheckPermissions(
+      request.user,
+      id,
+    );
+    if (authorized == false) throw new ForbiddenException();
     return this.studentsService.findOne(id);
   }
 
@@ -75,22 +71,23 @@ export class StudentsController {
     @Param('id') id: number,
     @Body(new ZodValidationPipe(updateStudentSchema))
     student: UpdateStudentDto,
-    @Req() request: authorizedRequest
+    @Req() request: authorizedRequest,
   ) {
-    const authorized = await this.getClassesAndCheckPermissions(request.user, id);
-    if(authorized == false)
-      throw new ForbiddenException()
+    const authorized = await this.getClassesAndCheckPermissions(
+      request.user,
+      id,
+    );
+    if (authorized == false) throw new ForbiddenException();
     return this.studentsService.update(id, student);
   }
 
   @Delete(':id')
-  async delete(
-    @Param('id') id: number,
-    @Req() request: authorizedRequest
-  ) {
-    const authorized = await this.getClassesAndCheckPermissions(request.user, id);
-    if(authorized == false)
-      throw new ForbiddenException()
+  async delete(@Param('id') id: number, @Req() request: authorizedRequest) {
+    const authorized = await this.getClassesAndCheckPermissions(
+      request.user,
+      id,
+    );
+    if (authorized == false) throw new ForbiddenException();
     return this.studentsService.delete(id);
   }
 }

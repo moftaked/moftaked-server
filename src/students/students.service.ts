@@ -1,8 +1,9 @@
+/* eslint-disable prettier/prettier */
 import {
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   Logger,
-  NotFoundException,
 } from '@nestjs/common';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { DatabaseService } from 'src/database/database.service';
@@ -10,7 +11,7 @@ import { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { classId } from 'src/types';
 
-class phoneNumbersIds implements RowDataPacket {
+export class phoneNumbersIds implements RowDataPacket {
   [column: number]: any;
   [column: string]: any;
   ['constructor']: { name: 'RowDataPacket' };
@@ -21,10 +22,11 @@ class phoneNumbersIds implements RowDataPacket {
 export class StudentsService {
   constructor(private readonly databaseService: DatabaseService) {}
 
+  //todo can return class id of teachers WARNING
   async getClassIdsByStudentId(student_id: number) {
     const results = await this.databaseService.executeQuery<classId[]>(
       'select class_id from person_class where person_id=?;',
-      [student_id]
+      [student_id],
     );
     return results;
   }
@@ -90,29 +92,34 @@ export class StudentsService {
     return { students };
   }
 
-
-  // todo: fix updating non-existent records, prevent updating teachers
   async update(id: number, student: UpdateStudentDto) {
     const connection = await this.databaseService.getConnection();
     try {
       await connection.beginTransaction();
-      await connection.query<ResultSetHeader>(
-        'update persons set person_name=?, address=?, district=?, notes=? where person_id=?;',
+      const firstQueryResult = await connection.query<ResultSetHeader>(
+        `
+        update persons 
+        set person_name=?, address=?, district=?, notes=? 
+        where person_id=? and person_id in (select person_id from person_class where type='student' and person_id=?);`,
         [
           student.student_name,
           student.address,
           student.district,
           student.notes,
           id,
+          id,
         ],
       );
+      if (firstQueryResult[0].affectedRows == 0) {
+        throw new ForbiddenException();
+      }
       const phoneNumbersIds = await this.databaseService.executeQuery<phoneNumbersIds[]>(
         'select phone_number_id from phone_numbers where person_id=?;',
-        [id]
-      );
+         [id],
+        );
       await connection.query(
         'update phone_numbers set phone_number=? where person_id=? and phone_number_id=?',
-        [student.phone_number, id, phoneNumbersIds[0].phone_number_id]
+        [student.phone_number, id, phoneNumbersIds[0].phone_number_id],
       );
 
       if (student.second_phone_number != undefined) {
@@ -134,29 +141,32 @@ export class StudentsService {
         await connection.query(
           'delete from phone_numbers where phone_number_id=?',
           [phoneNumbersIds[1].phone_number_id]
-        )
+        );
       }
 
       await connection.commit();
     } catch (error) {
       Logger.error(error);
       await connection.rollback();
-      throw new InternalServerErrorException();
+      throw error;
     } finally {
       connection.release();
     }
   }
 
-  // fix preventing deleting teachers
   async delete(id: number) {
     const result = await this.databaseService.executeQuery<ResultSetHeader>(
-      'delete from persons where person_id = ?;',
-      [id]
+      `
+      delete from persons 
+      where 
+        person_id = ? and
+        person_id in (select person_id from person_class where type='student' and person_id=?);
+      `,
+      [id, id],
     );
-    if(result.affectedRows == 0)
-      throw new NotFoundException();
+    if (result.affectedRows == 0) throw new ForbiddenException();
     return {
-      affectedRows: result.affectedRows
+      affectedRows: result.affectedRows,
     };
   }
 }
