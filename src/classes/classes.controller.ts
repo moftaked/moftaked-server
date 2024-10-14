@@ -1,25 +1,31 @@
 import {
+  Body,
   Controller,
   Get,
-  Post,
-  Body,
-  Patch,
+  NotFoundException,
   Param,
-  Delete,
+  Post,
   UseGuards,
 } from '@nestjs/common';
 import { ClassesService } from './classes.service';
-import { CreateClassDto } from './dto/create-class.dto';
-import { UpdateClassDto } from './dto/update-class.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesDec } from 'src/auth/roles.decorator';
 import { Roles } from 'src/users/entities/role.entity';
 import { RolesGuard } from 'src/auth/roles.guard';
+import { EventsService } from 'src/events/events.service';
+import { ZodValidationPipe } from 'src/ZodValidationPipe';
+import {
+  CreateAttendanceDto,
+  createAttendanceSchema,
+} from 'src/events/dto/create-attendance.dto';
 
 @Controller('classes')
 @UseGuards(AuthGuard)
 export class ClassesController {
-  constructor(private readonly classesService: ClassesService) {}
+  constructor(
+    private readonly classesService: ClassesService,
+    private readonly eventsService: EventsService,
+  ) {}
 
   @Get()
   findAll() {
@@ -31,10 +37,79 @@ export class ClassesController {
     return this.classesService.findOne(id);
   }
 
-  @Get('/:id/students')
+  @Get(':id/students')
   @UseGuards(RolesGuard)
   @RolesDec(Roles.teacher, Roles.leader, Roles.manager)
   getStudents(@Param('id') id: number) {
     return this.classesService.getStudents(id);
+  }
+
+  @Get(':id/teachers')
+  @UseGuards(RolesGuard)
+  @RolesDec(Roles.leader, Roles.manager)
+  getTeachers(@Param('id') id: number) {
+    return this.classesService.getTeachers(id);
+  }
+
+  @Get(':id/students/events')
+  @UseGuards(RolesGuard)
+  @RolesDec(Roles.teacher, Roles.leader, Roles.manager)
+  getStudentsEvents(@Param('id') id: number) {
+    return this.classesService.getStudentsEvents(id);
+  }
+
+  @Get(':id/students/events/:eventId')
+  @UseGuards(RolesGuard)
+  @RolesDec(Roles.teacher, Roles.leader, Roles.manager)
+  getStudentsEvent(@Param(':eventId') eventId: number) {
+    return this.classesService.getStudentsEvent(eventId);
+  }
+
+  @Post(':id/students/events/:eventId/occurences')
+  @UseGuards(RolesGuard)
+  @RolesDec(Roles.leader, Roles.manager)
+  async createStudentsEventOccurence(@Param('eventId') eventId: number) {
+    return await this.eventsService.createStudentsEventOccurence(eventId);
+  }
+
+  @Get(':id/students/events/:event/attendance')
+  @UseGuards(RolesGuard)
+  @RolesDec(Roles.teacher, Roles.leader, Roles.manager)
+  async getAttendance(
+    @Param('id') classId: string,
+    @Param('event') eventId: string,
+  ) {
+    const occurencesResult =
+      await this.eventsService.getLastOccurenceId(+eventId);
+    if (occurencesResult.occurences[0] == undefined)
+      throw new NotFoundException();
+    return this.eventsService.getStudentAttendance(
+      occurencesResult.occurences[0].event_occurence_id,
+      +classId,
+    );
+  }
+
+  @Post(':id/students/events/:event/attendance')
+  @UseGuards(RolesGuard)
+  @RolesDec(Roles.teacher, Roles.leader, Roles.manager)
+  async addAttendance(
+    @Param('id') id: string,
+    @Param('event') eventId: string,
+    @Body(new ZodValidationPipe(createAttendanceSchema))
+    attendanceDto: CreateAttendanceDto,
+  ) {
+    const occurencesResult =
+      await this.eventsService.getLastOccurenceId(+eventId);
+    if (occurencesResult.occurences[0] == undefined)
+      throw new NotFoundException();
+    this.eventsService.addStudentsAttendance(
+      +id,
+      occurencesResult.occurences[0].event_occurence_id,
+      attendanceDto,
+    );
+    this.eventsService.deleteStudentsAttendance(
+      occurencesResult.occurences[0].event_occurence_id,
+      attendanceDto,
+    );
   }
 }
