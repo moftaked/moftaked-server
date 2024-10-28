@@ -11,6 +11,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { EventsModule } from './events/events.module';
 import { TeachersModule } from './teachers/teachers.module';
+import { SchoolsModule } from './schools/schools.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { TeachersModule } from './teachers/teachers.module';
     ClassesModule,
     EventsModule,
     TeachersModule,
+    SchoolsModule,
   ],
   providers: [AppService],
 })
