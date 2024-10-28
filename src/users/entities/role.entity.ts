@@ -11,5 +11,6 @@ export class Role implements RowDataPacket {
   [column: string]: any;
   ['constructor']: { name: 'RowDataPacket' };
   class_id: number;
+  school_id: number;
   role: Roles;
 }
