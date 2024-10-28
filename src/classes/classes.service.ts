@@ -96,9 +96,29 @@ export class ClassesService {
     };
   }
 
+  async getTeachersEvents(classId: number) {
+    const events = await this.databaseService.executeQuery(
+      `select event_id, event_name from events where class_id=? and (type='teacher' or type='all')`,
+      [classId],
+    );
+    return {
+      events,
+    };
+  }
+
   async getStudentsEvent(eventId: number) {
     const events = await this.databaseService.executeQuery(
-      `select event_id, event_name from events where event_id=? and type='student' or type='all'`,
+      `select event_id, event_name from events where event_id=? and (type='student' or type='all')`,
+      [eventId],
+    );
+    return {
+      events,
+    };
+  }
+
+  async getTeachersEvent(eventId: number) {
+    const events = await this.databaseService.executeQuery(
+      `select event_id, event_name from events where event_id=? and (type='teacher' or type='all')`,
       [eventId],
     );
     return {
