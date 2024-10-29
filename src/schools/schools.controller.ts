@@ -27,7 +27,7 @@ export class SchoolsController {
   }
 
   @Get(':id/managers/reports/:event_name/:type')
-  getEventReport(
+  getManagerEventReport(
     @Param('id') school_id: number,
     @Param('event_name') event_name: string,
     @Param('type') event_type: string,
@@ -44,5 +44,63 @@ export class SchoolsController {
       event_type,
       date,
     );
+  }
+
+  @Get('/leaders/reports/:classId/:event_name/:type')
+  getLeaderEventReport(
+    @Param('classId') class_id: number,
+    @Param('event_name') event_name: string,
+    @Param('type') event_type: string,
+    @Query('date') date: string,
+    @Req() request: authorizedRequest,
+  ) {
+    const authorized = request.user.roles.some((role) => {
+      return role.class_id == class_id && role.role == 'leader';
+    });
+    if (authorized == false) throw new ForbiddenException();
+    return this.schoolsService.getLeaderEventReport(
+      class_id,
+      event_name,
+      event_type,
+      date,
+    );
+  }
+
+  @Get('/teachers/reports/:classId/:event_name')
+  getTeacherEventReport(
+    @Param('classId') class_id: number,
+    @Param('event_name') event_name: string,
+    @Query('date') date: string,
+    @Req() request: authorizedRequest,
+  ) {
+    const authorized = request.user.roles.some((role) => {
+      return role.class_id == class_id && role.role == 'teacher';
+    });
+    if (authorized == false) throw new ForbiddenException();
+    return this.schoolsService.getTeacherEventReport(
+      class_id,
+      event_name,
+      date,
+    );
+  }
+
+  @Get('/leaders/:account_id/reports')
+  getLeaderReports(
+    @Param('account_id') account_id: number,
+    @Query('date') date: string,
+    @Req() request: authorizedRequest,
+  ) {
+    if (account_id != request.user.sub) throw new ForbiddenException();
+    return this.schoolsService.getLeaderReports(account_id, date);
+  }
+
+  @Get('/teachers/:account_id/reports')
+  getTeacherReports(
+    @Param('account_id') account_id: number,
+    @Query('date') date: string,
+    @Req() request: authorizedRequest,
+  ) {
+    if (account_id != request.user.sub) throw new ForbiddenException();
+    return this.schoolsService.getTeacherReports(account_id, date);
   }
 }

@@ -37,6 +37,14 @@ export interface school extends RowDataPacket {
   [column: number]: any;
   [column: string]: any;
   ['constructor']: { name: 'RowDataPacket' };
+  class_id: number;
+  class_name: string;
+}
+
+export interface IClass extends RowDataPacket {
+  [column: number]: any;
+  [column: string]: any;
+  ['constructor']: { name: 'RowDataPacket' };
   school_id: number;
   school_name: string;
 }
