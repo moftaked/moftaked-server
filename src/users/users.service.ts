@@ -28,7 +28,7 @@ export class UsersService {
 
   async getClasses(id: number) {
     const results = await this.databaseService.executeQuery(
-      'select class_id, class_name from roles inner join classes using(class_id) where account_id = ?;',
+      'select distinct class_id, class_name from roles inner join classes using(class_id) where account_id = ?;',
       [id],
     );
 
