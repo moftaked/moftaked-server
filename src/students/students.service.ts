@@ -22,10 +22,9 @@ export class phoneNumbersIds implements RowDataPacket {
 export class StudentsService {
   constructor(private readonly databaseService: DatabaseService) {}
 
-  //todo can return class id of teachers WARNING
   async getClassIdsByStudentId(student_id: number) {
     const results = await this.databaseService.executeQuery<classId[]>(
-      'select class_id from person_class where person_id=?;',
+      `select class_id from person_class where person_id=? and type='student';`,
       [student_id],
     );
     return results;

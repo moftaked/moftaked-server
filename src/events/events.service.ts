@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { DatabaseService } from 'src/database/database.service';
-import { RowDataPacket } from 'mysql2';
+import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 
 export interface Occurence extends RowDataPacket {
@@ -24,13 +24,13 @@ export class EventsService {
   }
 
   async createStudentsEventOccurence(eventId: number) {
-    await this.databaseService.executeQuery(
-      'insert ignore into event_occurence(event_id, occurence_date) values(?, curdate());',
-      [eventId],
+    const result = await this.databaseService.executeQuery<ResultSetHeader>(
+      `insert ignore into event_occurence(event_id, occurence_date) select ? as event_id, curdate() as occurence_date where ? in (select event_id from events where type in('student', 'all'));`,
+      [eventId, eventId],
     );
+    if (result.affectedRows == 0) throw new ForbiddenException();
   }
 
-  // todo: a teacher can make teacher event occurence
   async createTeachersEventOccurence(eventId: number) {
     await this.databaseService.executeQuery(
       'insert ignore into event_occurence(event_id, occurence_date) values(?, curdate());',
@@ -156,14 +156,13 @@ export class EventsService {
     attendanceDto.absence?.forEach(async (person_id) => {
       await this.databaseService.executeQuery(
         `
-        delete from attendance where person_id=? and event_occurence_id=?
+        delete from attendance where person_id=? and event_occurence_id=? and ? in (select person_id from person_class where type='student')
         `,
-        [person_id, occurenceId],
+        [person_id, occurenceId, person_id],
       );
     });
   }
 
-  // todo: a normal teacher can remove another teacher attendance lol
   deleteTeachersAttendance(
     occurenceId: number,
     attendanceDto: CreateAttendanceDto,
