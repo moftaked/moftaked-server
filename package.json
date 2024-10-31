@@ -1,6 +1,6 @@
 {
   "name": "moftaked-server",
-  "version": "0.1.0alpha",
+  "version": "1.0.0beta",
   "description": "",
   "author": "",
   "private": true,
@@ -31,6 +31,7 @@
     "@nestjs/typeorm": "^10.0.2",
     "bcrypt": "^5.1.1",
     "moftaked-server": "file:",
+    "morgan": "^1.10.0",
     "mysql2": "^3.11.0",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
@@ -44,6 +45,7 @@
     "@types/bcrypt": "^5.0.2",
     "@types/express": "^4.17.17",
     "@types/jest": "^29.5.2",
+    "@types/morgan": "^1.9.9",
     "@types/node": "^20.3.1",
     "@types/supertest": "^6.0.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
