@@ -103,4 +103,52 @@ export class SchoolsController {
     if (account_id != request.user.sub) throw new ForbiddenException();
     return this.schoolsService.getTeacherReports(account_id, date);
   }
+
+  @Get('/managers/:userId/absence/teachers')
+  getAbsentTeachers(
+    @Param('userId') userId: number,
+    @Query('occurences') occurences: number,
+    @Query('minCount') minCount: number,
+    @Req() request: authorizedRequest,
+  ) {
+    if (request.user.sub != userId) throw new ForbiddenException();
+    return this.schoolsService.getSchoolAbsentPeople(
+      userId,
+      'teacher',
+      occurences,
+      minCount,
+    );
+  }
+
+  @Get('/leaders/:userId/absence')
+  getLeaderAbsence(
+    @Param('userId') userId: number,
+    @Query('occurences') occurences: number,
+    @Query('minCount') minCount: number,
+    @Req() request: authorizedRequest,
+  ) {
+    if (request.user.sub != userId) throw new ForbiddenException();
+    return this.schoolsService.getClassAbsentPeople(
+      userId,
+      'all',
+      occurences,
+      minCount,
+    );
+  }
+
+  @Get('/teachers/:userId/absence')
+  getTeacherAbsence(
+    @Param('userId') userId: number,
+    @Query('occurences') occurences: number,
+    @Query('minCount') minCount: number,
+    @Req() request: authorizedRequest,
+  ) {
+    if (request.user.sub != userId) throw new ForbiddenException();
+    return this.schoolsService.getClassAbsentPeople(
+      userId,
+      'student',
+      occurences,
+      minCount,
+    );
+  }
 }

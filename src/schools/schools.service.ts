@@ -1,7 +1,14 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { RowDataPacket } from 'mysql2';
 import { DatabaseService } from 'src/database/database.service';
-import { aggregatedStat, IClass, rawStat, school, stat } from 'src/types';
+import {
+  absenceRecord,
+  aggregatedStat,
+  IClass,
+  rawStat,
+  school,
+  stat,
+} from 'src/types';
 
 @Injectable()
 export class SchoolsService {
@@ -14,6 +21,32 @@ export class SchoolsService {
       inner join schools using(school_id)
       where account_id=? and role='manager'`,
       [account_id],
+    );
+    if (results.length <= 0) throw new ForbiddenException();
+
+    return results;
+  }
+
+  async getSchoolsJoinedByUser(account_id: number) {
+    const results = await this.databaseService.executeQuery<school[]>(
+      `select distinct school_id, school_name 
+      from roles
+      inner join schools using(school_id)
+      where account_id=?`,
+      [account_id],
+    );
+    if (results.length <= 0) throw new ForbiddenException();
+
+    return results;
+  }
+
+  async getSchoolsJoinedBySchoolAndUser(school_id: number, account_id: number) {
+    // eslint-disable-next-line prettier/prettier
+    const results = await this.databaseService.executeQuery<{[column: number]: any; [column: string]: any; ['constructor']: { name: 'RowDataPacket' }; class_id: number}[]>(
+      `select distinct class_id
+      from roles
+      where account_id=? and school_id=?`,
+      [account_id, school_id],
     );
     if (results.length <= 0) throw new ForbiddenException();
 
@@ -306,5 +339,171 @@ export class SchoolsService {
     );
 
     return { length: results.length, results };
+  }
+
+  async getSchoolAbsentPeople(
+    userId: number,
+    type: string,
+    occurenceCount: number,
+    minCount: number,
+  ) {
+    const manageSchools = await this.getSchoolsManagedByUser(userId);
+    const result = [];
+    for (const school of manageSchools) {
+      const results = await this.databaseService.executeQuery<absenceRecord[]>(
+        `
+        select 
+          count(person_class.person_id) - count(attendance.person_id) as absent,
+          classes.class_name,
+          events.event_name, 
+          persons.person_name,
+          person_class.type
+        from person_class 
+        inner join classes on 
+          (? = 'all' or person_class.type = ?) and
+          person_class.class_id = classes.class_id and 
+          classes.school_id=?
+        inner join persons using(person_id) 
+        inner join events on 
+          (events.type = 'all' or events.type = person_class.type) and 
+          classes.class_id = events.class_id 
+        inner join(
+          SELECT 
+            event_id, 
+            event_occurence_id,
+            ROW_NUMBER() OVER (PARTITION BY event_id ORDER BY occurence_date DESC) AS rn 
+          from event_occurence
+        ) AS ranked_occurrences on 
+          ranked_occurrences.rn <= ? and 
+          events.event_id = ranked_occurrences.event_id 
+        left join attendance on 
+          person_class.person_id = attendance.person_id and 
+          ranked_occurrences.event_occurence_id = attendance.event_occurence_id 
+        group by classes.class_name, events.event_id, person_class.type, person_class.person_id
+        having absent >= ?;
+        `,
+        [type, type, school.school_id, occurenceCount, minCount],
+      );
+      result.push({
+        school_id: '' + school.school_id,
+        school_name: school.school_name,
+        classes: this.aggregateAbsenceReport(results),
+      });
+    }
+    return { schools: result };
+  }
+
+  async getClassAbsentPeople(
+    userId: number,
+    type: string,
+    occurenceCount: number,
+    minCount: number,
+  ) {
+    const joinedSchools = await this.getSchoolsJoinedByUser(userId);
+    const result = [];
+    const results: absenceRecord[] = [] as unknown[] as absenceRecord[];
+    for (const school of joinedSchools) {
+      const joinedClasses = await this.getSchoolsJoinedBySchoolAndUser(
+        school.school_id,
+        userId,
+      );
+      for (const joinedClass of joinedClasses) {
+        // eslint-disable-next-line prettier/prettier
+        const classResults = await this.databaseService.executeQuery<absenceRecord[]>(
+          `
+          select 
+            count(person_class.person_id) - count(attendance.person_id) as absent,
+            classes.class_name,
+            events.event_name, 
+            persons.person_name,
+            person_class.type
+          from person_class 
+          inner join classes on 
+            (? = 'all' or person_class.type = ?) and
+            person_class.class_id = classes.class_id and 
+            classes.class_id=?
+          inner join persons using(person_id) 
+          inner join events on 
+            (events.type = 'all' or events.type = person_class.type) and 
+            classes.class_id = events.class_id 
+          inner join(
+            SELECT 
+              event_id, 
+              event_occurence_id,
+              ROW_NUMBER() OVER (PARTITION BY event_id ORDER BY occurence_date DESC) AS rn 
+            from event_occurence
+          ) AS ranked_occurrences on 
+            ranked_occurrences.rn <= ? and 
+            events.event_id = ranked_occurrences.event_id 
+          left join attendance on 
+            person_class.person_id = attendance.person_id and 
+            ranked_occurrences.event_occurence_id = attendance.event_occurence_id 
+          group by classes.class_name, events.event_id, person_class.type, person_class.person_id
+          having absent >= ?;
+          `,
+          [type, type, joinedClass.class_id, occurenceCount, minCount],
+        );
+        results.push(...classResults);
+      }
+      result.push({
+        school_id: '' + school.school_id,
+        school_name: school.school_name,
+        classes: this.aggregateAbsenceReport(results),
+      });
+    }
+    return { schools: result };
+  }
+
+  aggregateAbsenceReport(records: absenceRecord[]) {
+    const aggregated: any = {};
+    type events = [
+      {
+        event_name: string;
+        records: [{ person_name: string; absent: number }];
+      },
+    ];
+    type types = [{ type: string; events: events }];
+    type school = { class_name: string; types: types };
+    const result: school[] = [] as unknown[] as school[];
+
+    for (const record of records) {
+      if (aggregated[record.class_name]) {
+        if (aggregated[record.class_name][record.type]) {
+          if (
+            aggregated[record.class_name][record.type][record.event_name] ==
+            undefined
+          ) {
+            aggregated[record.class_name][record.type][record.event_name] = [];
+          }
+        } else {
+          aggregated[record.class_name][record.type] = {};
+          aggregated[record.class_name][record.type][record.event_name] = [];
+        }
+      } else {
+        aggregated[record.class_name] = {};
+        aggregated[record.class_name][record.type] = {};
+        aggregated[record.class_name][record.type][record.event_name] = [];
+      }
+      aggregated[record.class_name][record.type][record.event_name].push({
+        person_name: record.person_name,
+        absent: record.absent,
+      });
+    }
+
+    for (const class_name of Object.keys(aggregated)) {
+      const types = [] as unknown[] as types;
+      for (const type of Object.keys(aggregated[class_name])) {
+        const events: events = [] as unknown[] as events;
+        for (const event_name of Object.keys(aggregated[class_name][type])) {
+          events.push({
+            event_name,
+            records: aggregated[class_name][type][event_name],
+          });
+        }
+        types.push({ type, events });
+      }
+      result.push({ class_name, types });
+    }
+    return result;
   }
 }

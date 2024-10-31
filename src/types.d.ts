@@ -22,6 +22,17 @@ export interface rawStat extends RowDataPacket {
   total: number;
 }
 
+export interface absenceRecord extends RowDataPacket {
+  [column: number]: any;
+  [column: string]: any;
+  ['constructor']: { name: 'RowDataPacket' };
+  event_name: string;
+  person_name: string;
+  class_name: string;
+  type: string;
+  absent: number;
+}
+
 export interface stat {
   type: string;
   attended: number;
@@ -37,8 +48,8 @@ export interface school extends RowDataPacket {
   [column: number]: any;
   [column: string]: any;
   ['constructor']: { name: 'RowDataPacket' };
-  class_id: number;
-  class_name: string;
+  school_id: number;
+  school_name: string;
 }
 
 export interface IClass extends RowDataPacket {
