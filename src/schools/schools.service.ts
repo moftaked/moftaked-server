@@ -380,7 +380,8 @@ export class SchoolsService {
           person_class.person_id = attendance.person_id and 
           ranked_occurrences.event_occurence_id = attendance.event_occurence_id 
         group by classes.class_name, events.event_id, person_class.type, person_class.person_id
-        having absent >= ?;
+        having absent >= ?
+        order by classes.class_name, events.event_name, persons.person_name;
         `,
         [type, type, school.school_id, occurenceCount, minCount],
       );

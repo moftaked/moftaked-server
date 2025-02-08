@@ -36,7 +36,8 @@ export class ClassesService {
       left join 
         phone_numbers using(person_id) 
       where class_id = ? and person_class.type = 'student'
-      group by person_id;`,
+      group by person_id
+      order by student_name;`,
       [id],
     );
 
@@ -69,7 +70,8 @@ export class ClassesService {
       left join 
         phone_numbers using(person_id) 
       where class_id = ? and person_class.type = 'teacher'
-      group by person_id;`,
+      group by person_id
+      order by teacher_name;`,
       [id],
     );
 

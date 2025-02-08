@@ -64,7 +64,8 @@ export class EventsService {
           on 
             attendance.event_occurence_id = event_occurence.event_occurence_id 
             and attendance.person_id = persons.person_id 
-        where event_occurence.event_occurence_id=?;
+        where event_occurence.event_occurence_id=?
+        order by persons.person_name;
 
       `,
       [classId, occurenceId],
@@ -97,7 +98,8 @@ export class EventsService {
           on 
             attendance.event_occurence_id = event_occurence.event_occurence_id 
             and attendance.person_id = persons.person_id 
-        where event_occurence.event_occurence_id=?;
+        where event_occurence.event_occurence_id=?
+        order by persons.person_name;
       `,
       [classId, occurenceId],
     );
