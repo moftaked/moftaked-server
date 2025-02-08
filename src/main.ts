@@ -5,8 +5,13 @@ import * as morgan from 'morgan';
 import * as fs from 'fs';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
+    const httpsOptions = {
+    	key: fs.readFileSync('/home/tony/certs/privkey.pem'),
+	cert: fs.readFileSync('/home/tony/certs/fullchain.pem')
+    }
+    const app = await NestFactory.create(AppModule, {
     logger: ['error', 'log', 'warn', 'debug'],
+    httpsOptions,
   });
   const accessLogStream = fs.createWriteStream('access.log', { flags: 'a' });
   app.use(morgan('combined', { stream: accessLogStream }));
