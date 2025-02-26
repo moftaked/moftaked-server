@@ -265,7 +265,7 @@ export class SchoolsService {
         person_class.person_id=attendance.person_id
       group by occurence_date
       having occurence_date is not null
-      order by occurence_date desc
+      order by DATE(occurence_date) desc
       limit 5;
       `,
       [schoolId, date, eventName, eventType],
@@ -299,7 +299,7 @@ export class SchoolsService {
         person_class.person_id=attendance.person_id
       group by occurence_date
       having occurence_date is not null
-      order by occurence_date desc
+      order by DATE(occurence_date) desc
       limit 5;
       `,
       [classId, date, eventName, eventType],
@@ -332,7 +332,7 @@ export class SchoolsService {
         person_class.person_id=attendance.person_id
       group by occurence_date
       having occurence_date is not null
-      order by occurence_date desc
+      order by DATE(occurence_date) desc
       limit 5;
       `,
       [classId, date, eventName],
