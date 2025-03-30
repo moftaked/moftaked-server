@@ -8,10 +8,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ClassesService } from './classes.service';
-import { AuthGuard } from 'src/auth/auth.guard';
-import { RolesDec } from 'src/auth/roles.decorator';
+import { AuthGuard } from 'src/guards/auth.guard';
+import { RolesDec } from 'src/guards/roles.decorator';
 import { Roles } from 'src/users/entities/role.entity';
-import { RolesGuard } from 'src/auth/roles.guard';
+import { RolesGuard } from 'src/guards/roles.guard';
 import { EventsService } from 'src/events/events.service';
 import { ZodValidationPipe } from 'src/ZodValidationPipe';
 import {

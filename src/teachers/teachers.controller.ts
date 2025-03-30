@@ -21,7 +21,7 @@ import {
   UpdateTeacherDto,
   updateTeacherSchema,
 } from './dto/update-teacher.dto';
-import { AuthGuard } from 'src/auth/auth.guard';
+import { AuthGuard } from 'src/guards/auth.guard';
 
 @Controller('teachers')
 @UseGuards(AuthGuard)

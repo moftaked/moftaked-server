@@ -5,7 +5,7 @@ import { BcryptModule } from 'src/bcrypt/bcrypt.module';
 import { UsersModule } from 'src/users/users.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { AuthGuard } from './auth.guard';
+import { AuthGuard } from '../guards/auth.guard';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
 const jwtSecretFactory = (configService: ConfigService) => {
@@ -21,7 +21,7 @@ const jwtSecretFactory = (configService: ConfigService) => {
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: '12h' }, 
+        signOptions: { expiresIn: '12h' },
       }),
       inject: [ConfigService],
     }),

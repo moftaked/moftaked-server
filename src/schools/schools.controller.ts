@@ -8,7 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { SchoolsService } from './schools.service';
-import { AuthGuard } from 'src/auth/auth.guard';
+import { AuthGuard } from 'src/guards/auth.guard';
 import { authorizedRequest } from 'src/types';
 
 @Controller('schools')

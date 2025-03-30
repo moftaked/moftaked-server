@@ -16,7 +16,7 @@ import {
   createStudentSchema,
 } from './dto/create-student.dto';
 import { ZodValidationPipe } from 'src/ZodValidationPipe';
-import { AuthGuard } from 'src/auth/auth.guard';
+import { AuthGuard } from 'src/guards/auth.guard';
 import {
   updateStudentSchema,
   UpdateStudentDto,

@@ -12,6 +12,8 @@ import { join } from 'path';
 import { EventsModule } from './events/events.module';
 import { TeachersModule } from './teachers/teachers.module';
 import { SchoolsModule } from './schools/schools.module';
+import { AccountsModule } from './accounts/accounts.module';
+import { PasswordGeneratorService } from './password-generator/password-generator/password-generator.service';
 
 @Module({
   imports: [
@@ -35,7 +37,8 @@ import { SchoolsModule } from './schools/schools.module';
     EventsModule,
     TeachersModule,
     SchoolsModule,
+    AccountsModule,
   ],
-  providers: [AppService],
+  providers: [AppService, PasswordGeneratorService],
 })
 export class AppModule {}

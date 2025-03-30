@@ -9,7 +9,7 @@ import {
 import { AuthService } from './auth.service';
 import { ZodValidationPipe } from 'src/ZodValidationPipe';
 import { SignInDto, signInSchema } from './dto/signInDto.dto';
-import { AuthGuard } from './auth.guard';
+import { AuthGuard } from '../guards/auth.guard';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
 @Controller('auth')
