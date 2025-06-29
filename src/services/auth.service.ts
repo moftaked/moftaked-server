@@ -2,6 +2,8 @@ import bcrypt from 'bcrypt';
 import {User} from '../types';
 import {executeQuery} from './database.service';
 import jwt from 'jsonwebtoken';
+import { Roles } from '../enums/roles.enum';
+import rolesService from './roles.service';
 
 let jwtSecret: string;
 
@@ -19,7 +21,7 @@ async function signIn(username: string, password: string) {
   if ((await compare(password, user.password)) === false) {
     throw new Error('unauthorized'); // todo: implement better error type
   }
-  const roles = await getRoles(user.account_id);
+  const roles = await rolesService.getRoles(user.account_id);
   const payload = {sub: user.account_id, username: user.username};
   return {
     access_token: generateAccessToken(payload),
@@ -33,26 +35,6 @@ async function compare(password: string, hashed: string) {
   return res;
 }
 
-async function getRoles(accountId: number, schoolId?: number, classId?: number) {
-  let queryStr = 'select class_id, role, school_id from roles where account_id = ?';
-  const queryParams = [accountId];
-  if(schoolId !== undefined) {
-    queryStr = queryStr + 'and school_id = ?';
-    queryParams.push(schoolId);
-  }
-  if(classId !== undefined) {
-    queryStr = queryStr + 'and class_id = ?';
-    queryParams.push(classId);
-  }
-
-  const roles = await executeQuery<RowDataPacket[]>(
-    queryStr,
-    queryParams,
-  );
-
-  return roles;
-}
-
 function generateAccessToken(payload: unknown) {
   // todo: we should ES256
   return jwt.sign({payload}, jwtSecret, {expiresIn: '1Days', algorithm: 'HS256'});
@@ -63,4 +45,14 @@ function verify(token: string) {
   // return jwt.verify(token, jwtSecret, {algorithms: ['ES256']});
 }
 
-export default {signIn, init, verify}
+async function isInClass(userId: number, classId: number, requiredRole: Roles) {
+  const roles = await rolesService.getRoles(userId);
+  return roles.some(role => role['class_id'] === classId && role['role'] === requiredRole);
+}
+
+async function hasRole(userId: number, requiredRole: Roles) {
+  const roles = await rolesService.getRoles(userId);
+  return roles.some(role => role['role'] === requiredRole);
+};
+
+export default {signIn, init, verify, isInClass, hasRole}
