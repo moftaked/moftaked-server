@@ -22,7 +22,7 @@ async function signIn(username: string, password: string) {
   const roles = await getRoles(user.account_id);
   const payload = {sub: user.account_id, username: user.username};
   return {
-    access_token: generateAccessToken(JSON.stringify(payload)),
+    access_token: generateAccessToken(payload),
     user_id: user.account_id,
     roles: JSON.stringify(roles),
   };
@@ -45,7 +45,7 @@ async function getRoles(accountId: number, schoolId?: number, classId?: number) 
     queryParams.push(classId);
   }
 
-  const roles = await executeQuery(
+  const roles = await executeQuery<RowDataPacket[]>(
     queryStr,
     queryParams,
   );
@@ -53,13 +53,13 @@ async function getRoles(accountId: number, schoolId?: number, classId?: number) 
   return roles;
 }
 
-function generateAccessToken(payload: string) {
+function generateAccessToken(payload: unknown) {
   // todo: we should ES256
   return jwt.sign({payload}, jwtSecret, {expiresIn: '1Days', algorithm: 'HS256'});
 }
 
 function verify(token: string) {
-  return jwt.verify(token, jwtSecret, {algorithms: ['HS256']});
+  return jwt.verify(token, jwtSecret, {algorithms: ['HS256']}) as jwt.JwtPayload;
   // return jwt.verify(token, jwtSecret, {algorithms: ['ES256']});
 }
 
