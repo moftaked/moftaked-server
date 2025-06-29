@@ -3,7 +3,7 @@ import 'dotenv/config';
 import {init} from './services/database.service';
 import {DbConfig} from './types';
 import authService from './services/auth.service';
-import { authRouter } from './routes/auth.route';
+import routes from './app.routes';
 
 if (!process.env['DB_HOST']) throw new Error('DB_HOST is not defined');
 if (!process.env['DB_NAME']) throw new Error('DB_NAME is not defined');
@@ -28,7 +28,9 @@ const port = 3000;
 app.use(express.static('public'));
 app.use(express.json());
 
-app.use('/auth', authRouter)
+routes.forEach(route => {
+  app.use(route.path, route.router);
+});
 
 app.listen(port, () => {
   console.log(`app listening on port ${port}`);
