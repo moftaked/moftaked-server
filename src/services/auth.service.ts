@@ -45,9 +45,11 @@ function verify(token: string) {
   // return jwt.verify(token, jwtSecret, {algorithms: ['ES256']});
 }
 
-async function isInClass(userId: number, classId: number, requiredRole: Roles) {
-  const roles = await rolesService.getRoles(userId);
-  return roles.some(role => role['class_id'] === classId && role['role'] === requiredRole);
+async function isInClass(userId: number, classId: number, authorizedRoles: Roles[]) {
+  const roles = await rolesService.getRoles(userId, classId);
+  return roles.some(role => {
+    role['class_id'] === classId && authorizedRoles.some(authorizedRole => authorizedRole === role['role'])
+  });
 }
 
 async function hasRole(userId: number, requiredRole: Roles) {

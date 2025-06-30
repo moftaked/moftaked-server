@@ -14,11 +14,11 @@ export function isAuthenticated() {
   }
 }
 
-export function isInSameClass(role: Roles) {
+export function isInClass(whereIsClassId: 'body' | 'params', authorizedRoles: Roles[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     const user: {sub: number, username: string} = res.locals['user'];
-    const body: {classId: number} = req.body;
-    const authorized = authService.isInClass(user.sub, body.classId, role);
+    const classId = whereIsClassId === 'body' ? req.body.classId : req.params['classId'];
+    const authorized = authService.isInClass(user.sub, classId, authorizedRoles);
     if(!authorized) throw new Error(`${StatusCodes.FORBIDDEN}`);
     next();
   }
