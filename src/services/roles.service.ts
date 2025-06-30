@@ -23,6 +23,19 @@ async function getRoles(accountId: number, classId?: number, schoolId?: number) 
   return roles;
 }
 
+async function getHighestRole(accountId: number, classId?: number, schoolId?: number) {
+  const roles = await getRoles(accountId, classId, schoolId);
+  const isManager = roles.some(role => role['role'] === 'manager');
+  if(isManager) {
+    return Roles.manager;
+  }
+  const isLeader = roles.some(role => role['role'] === 'leader');
+  if(isLeader) {
+    return Roles.leader;
+  }
+  return Roles.teacher;
+}
+
 async function addRole(user: number | string, classId: number, role: Roles) {
   const connection = await getConnection();
   try {
@@ -64,4 +77,4 @@ async function deleteRole(roleId: number) {
   }
 }
 
-export default { addRole, deleteRole, getRoles };
+export default { addRole, deleteRole, getRoles, getHighestRole };
