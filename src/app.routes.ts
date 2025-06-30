@@ -1,5 +1,6 @@
 import { accountsRouter } from "./routes/accounts.route";
 import { authRouter } from "./routes/auth.route";
+import classesRouter from "./routes/classes.route";
 import { rolesRouter } from "./routes/roles.route";
 
 const routes = [
@@ -15,6 +16,10 @@ const routes = [
     path: '/roles',
     router: rolesRouter
   },
+  {
+    path: '/classes',
+    router: classesRouter
+  }
 ];
 
 export default routes;
