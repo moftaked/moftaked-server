@@ -3,15 +3,15 @@ import { Roles } from '../enums/roles.enum';
 import accountsService from './accounts.service';
 import { executeQuery, getConnection } from './database.service';
 
-async function getRoles(accountId: number, schoolId?: number, classId?: number) {
+async function getRoles(accountId: number, classId?: number, schoolId?: number) {
   let queryStr = 'select class_id, role, school_id from roles where account_id = ?';
   const queryParams = [accountId];
   if(schoolId !== undefined) {
-    queryStr = queryStr + 'and school_id = ?';
+    queryStr = queryStr + ' and school_id = ?';
     queryParams.push(schoolId);
   }
   if(classId !== undefined) {
-    queryStr = queryStr + 'and class_id = ?';
+    queryStr = queryStr + ' and class_id = ?';
     queryParams.push(classId);
   }
 
