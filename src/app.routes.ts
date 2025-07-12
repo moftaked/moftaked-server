@@ -1,6 +1,7 @@
 import { accountsRouter } from "./routes/accounts.route";
 import { authRouter } from "./routes/auth.route";
 import classesRouter from "./routes/classes.route";
+import eventsRouter from "./routes/events.route";
 import { rolesRouter } from "./routes/roles.route";
 
 const routes = [
@@ -19,7 +20,11 @@ const routes = [
   {
     path: '/classes',
     router: classesRouter
-  }
+  },
+  {
+    path: '/events',
+    router: eventsRouter
+  },
 ];
 
 export default routes;
