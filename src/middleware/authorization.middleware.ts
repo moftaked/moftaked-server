@@ -18,6 +18,7 @@ export function isInClass(whereIsClassId: 'body' | 'params', authorizedRoles: Ro
   return (req: Request, res: Response, next: NextFunction) => {
     const user: {sub: number, username: string} = res.locals['user'];
     const classId = whereIsClassId === 'body' ? req.body.classId : req.params['classId'];
+    if(!classId) throw new Error(`${StatusCodes.BAD_REQUEST}`);
     const authorized = authService.isInClass(user.sub, classId, authorizedRoles);
     if(!authorized) throw new Error(`${StatusCodes.FORBIDDEN}`);
     next();

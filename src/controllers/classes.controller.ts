@@ -14,8 +14,9 @@ export async function getStudents(req: Request, res: Response) {
     classId = parseInt(classId);
     const students = await classesService.getStudents(classId);
     res.status(StatusCodes.OK).json({success: true, data: students});
+  } else {
+    res.status(400).json({ error: "Invalid class ID" }); // handle this in the global error handler
   }
-  res.status(400).json({ error: "Invalid class ID" }); // handle this in the global error handler
 }
 
 export async function getTeachers(req: Request, res: Response) {
@@ -24,6 +25,7 @@ export async function getTeachers(req: Request, res: Response) {
     classId = parseInt(classId);
     const teachers = await classesService.getTeachers(classId);
     res.status(StatusCodes.OK).json({success: true, data: teachers});
+  } else {
+    res.status(400).json({ error: "Invalid class ID" }); // handle this in the global error handler
   }
-  res.status(400).json({ error: "Invalid class ID" }); // handle this in the global error handler
 }
