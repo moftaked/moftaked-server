@@ -48,7 +48,7 @@ function verify(token: string) {
 async function isInClass(userId: number, classId: number, authorizedRoles: Roles[]) {
   const roles = await rolesService.getRoles(userId, classId);
   return roles.some(role => {
-    role['class_id'] === classId && authorizedRoles.some(authorizedRole => authorizedRole === role['role'])
+    return role['class_id'] === classId && authorizedRoles.some(authorizedRole => authorizedRole === role['role'])
   });
 }
 
