@@ -9,6 +9,13 @@ interface phoneNumbersIds extends RowDataPacket {
   phone_number_id: number;
 }
 
+export interface classIds extends RowDataPacket {
+  [column: number]: unknown;
+  [column: string]: unknown;
+  ['constructor']: {name: 'RowDataPacket'};
+  class_id: number;
+}
+
 async function createPerson(type: 'student' | 'teacher', data: CreatePersonDto) {
   const connection = await getConnection();
   try {
@@ -125,8 +132,22 @@ async function getPersonById(personId: number) {
   }
 }
 
+async function getJoinedClasses(personId: number, type: 'student' | 'teacher') {
+  try {
+    const results = await executeQuery<classIds[]>(
+      `select class_id from person_class
+      where person_id = ? and type = ?`,
+      [personId, type],
+    );
+    return results;
+  } catch (error) {
+    throw error;
+  }
+}
+
 export default {
   createPerson,
   getPersonById,
   updatePerson,
+  getJoinedClasses,
 };

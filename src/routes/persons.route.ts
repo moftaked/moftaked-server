@@ -1,5 +1,5 @@
 import express from 'express';
-import { isAuthenticated, isInClass } from '../middleware/authorization.middleware';
+import { isAuthenticated, isInClass, isInPersonClass } from '../middleware/authorization.middleware';
 import { Roles } from '../enums/roles.enum';
 import { validateData } from '../middleware/validation.middleware';
 import { createPersonSchema, updatePersonSchema } from '../schemas/persons.schemas';
@@ -11,7 +11,7 @@ const personsRouter = express.Router();
 personsRouter.use(isAuthenticated());
 
 
-//todo: complete upload photos
+//todo: complete upload photos, delete persons, update/delete photos.
 personsRouter.post(
   '/photos',
   upload.single('photo'),
@@ -20,13 +20,13 @@ personsRouter.post(
 
 personsRouter.get(
   '/students/:studentId',
-  // we need to check if the user is in the class of the student, and if the studentId is an id of a student at the user joined class
+  isInPersonClass('studentId', 'student', [Roles.teacher, Roles.leader, Roles.manager]),
   getPersonById('student')
 )
 
 personsRouter.get(
   '/teachers/:teacherId',
-  // we need to check if the user is in the class of the teacher, and if the teacherId is an id of a teacher at the user joined class
+  isInPersonClass('teacherId', 'teacher', [Roles.leader, Roles.manager]),
   getPersonById('teacher')
 )
 
@@ -46,14 +46,14 @@ personsRouter.post(
 
 personsRouter.put(
   '/students/:studentId',
-  // we need to check if the user is in the class of the student, and if the studentId is an id of a student at the user joined class
+  isInPersonClass('studentId', 'student', [Roles.teacher, Roles.leader, Roles.manager]),
   validateData(updatePersonSchema),
   updatePerson('student')
 );
 
 personsRouter.put(
   '/teachers/:teacherId',
-  // we need to check if the user is in the class of the teacher, and if the teacherId is an id of a teacher at the user joined class
+  isInPersonClass('teacherId', 'teacher', [Roles.leader, Roles.manager]),
   validateData(updatePersonSchema),
   updatePerson('teacher')
 );
