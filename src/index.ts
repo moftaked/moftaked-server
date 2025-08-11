@@ -1,7 +1,7 @@
 import express from 'express';
 import 'dotenv/config';
-import {init} from './services/database.service';
-import {DbConfig} from './types';
+import { init } from './services/database.service';
+import { DbConfig } from './types';
 import authService from './services/auth.service';
 import routes from './app.routes';
 
@@ -19,8 +19,14 @@ const dbConfig: DbConfig = {
   port: parseInt(process.env['DB_PORT'], 10),
 };
 
-init(dbConfig.user, dbConfig.password, dbConfig.database, dbConfig.host, dbConfig.port);
-authService.init(process.env['JWT_SECRET']!)
+init(
+  dbConfig.user,
+  dbConfig.password,
+  dbConfig.database,
+  dbConfig.host,
+  dbConfig.port,
+);
+authService.init(process.env['JWT_SECRET']!);
 
 const app = express();
 const port = 3000;

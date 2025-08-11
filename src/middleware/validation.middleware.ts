@@ -1,7 +1,7 @@
-import {Request, Response, NextFunction} from 'express';
-import {z, ZodError} from 'zod/v4';
+import { Request, Response, NextFunction } from 'express';
+import { z, ZodError } from 'zod/v4';
 
-import {StatusCodes} from 'http-status-codes';
+import { StatusCodes } from 'http-status-codes';
 
 export function validateData(schema: z.ZodObject) {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -15,11 +15,11 @@ export function validateData(schema: z.ZodObject) {
         }));
         res
           .status(StatusCodes.BAD_REQUEST)
-          .json({error: 'Invalid data', details: errorMessages});
+          .json({ error: 'Invalid data', details: errorMessages });
       } else {
         res
           .status(StatusCodes.INTERNAL_SERVER_ERROR)
-          .json({error: 'Internal Server Error'});
+          .json({ error: 'Internal Server Error' });
       }
     }
   };

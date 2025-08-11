@@ -1,14 +1,8 @@
 import { z } from 'zod/v4';
 
 export const createPersonSchema = z.object({
-  name: z
-    .string()
-    .min(2)
-    .max(50),
-  address: z
-    .string()
-    .min(4)
-    .max(1000),
+  name: z.string().min(2).max(50),
+  address: z.string().min(4).max(1000),
   phone_number: z
     .string()
     .min(7)

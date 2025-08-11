@@ -1,35 +1,35 @@
-import { accountsRouter } from "./routes/accounts.route";
-import attendanceRouter from "./routes/attendance.route";
-import { authRouter } from "./routes/auth.route";
-import classesRouter from "./routes/classes.route";
-import eventsRouter from "./routes/events.route";
-import { rolesRouter } from "./routes/roles.route";
+import accountsRouter from './routes/accounts.route';
+import attendanceRouter from './routes/attendance.route';
+import authRouter from './routes/auth.route';
+import classesRouter from './routes/classes.route';
+import eventsRouter from './routes/events.route';
+import rolesRouter from './routes/roles.route';
 
 const routes = [
   {
     path: '/auth',
-    router: authRouter
+    router: authRouter,
   },
   {
     path: '/accounts',
-    router: accountsRouter
+    router: accountsRouter,
   },
   {
     path: '/roles',
-    router: rolesRouter
+    router: rolesRouter,
   },
   {
     path: '/classes',
-    router: classesRouter
+    router: classesRouter,
   },
   {
     path: '/events',
-    router: eventsRouter
+    router: eventsRouter,
   },
   {
     path: '/attendance',
-    router: attendanceRouter
-  }
+    router: attendanceRouter,
+  },
 ];
 
 export default routes;

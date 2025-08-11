@@ -1,10 +1,10 @@
-import { ResultSetHeader, RowDataPacket } from "mysql2/promise";
-import { executeQuery, getConnection } from "./database.service";
-import { CreatePersonDto, UpdatePersonDto } from "../schemas/persons.schemas";
+import { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
+import { executeQuery, getConnection } from './database.service';
+import { CreatePersonDto, UpdatePersonDto } from '../schemas/persons.schemas';
 
 interface phoneNumbersIds extends RowDataPacket {
-  [column: number]: any;
-  [column: string]: any;
+  [column: number]: unknown;
+  [column: string]: unknown;
   ['constructor']: { name: 'RowDataPacket' };
   phone_number_id: number;
 }
@@ -12,11 +12,14 @@ interface phoneNumbersIds extends RowDataPacket {
 export interface classIds extends RowDataPacket {
   [column: number]: unknown;
   [column: string]: unknown;
-  ['constructor']: {name: 'RowDataPacket'};
+  ['constructor']: { name: 'RowDataPacket' };
   class_id: number;
 }
 
-async function createPerson(type: 'student' | 'teacher', data: CreatePersonDto) {
+async function createPerson(
+  type: 'student' | 'teacher',
+  data: CreatePersonDto,
+) {
   const connection = await getConnection();
   try {
     await connection.beginTransaction();
@@ -35,7 +38,7 @@ async function createPerson(type: 'student' | 'teacher', data: CreatePersonDto) 
       [personResult.insertId, data.phone_number.trim()],
     );
 
-    if (data.second_phone_number != undefined) {
+    if (data.second_phone_number !== undefined) {
       await connection.query(
         'insert into phone_numbers(person_id, phone_number) values (?, ?);',
         [personResult.insertId, data.second_phone_number.trim()],
@@ -43,7 +46,7 @@ async function createPerson(type: 'student' | 'teacher', data: CreatePersonDto) 
     }
 
     await connection.query(
-      `insert into person_class(person_id, class_id, type) values (?, ?, ?)`,
+      'insert into person_class(person_id, class_id, type) values (?, ?, ?)',
       [personResult.insertId, data.class_id, type],
     );
 
@@ -58,91 +61,87 @@ async function createPerson(type: 'student' | 'teacher', data: CreatePersonDto) 
 
 async function updatePerson(personId: number, person: UpdatePersonDto) {
   const connection = await getConnection();
-    try {
-      await connection.beginTransaction();
-      const firstQueryResult = await connection.query<ResultSetHeader>(
-        `
+  try {
+    await connection.beginTransaction();
+    const firstQueryResult = await connection.query<ResultSetHeader>(
+      `
         update persons 
         set person_name=?, address=?, district_id=?, notes=? 
         where person_id=? and person_id in (select person_id from person_class where type='student' and person_id=?);`,
+      [
+        person.name.trim(),
+        person.address.trim(),
+        person.district_id,
+        person.notes?.trim(),
+        personId,
+        personId,
+      ],
+    );
+    if (firstQueryResult[0].affectedRows === 0) {
+      return 0;
+    }
+    const phoneNumbersIds = await executeQuery<phoneNumbersIds[]>(
+      'select phone_number_id from phone_numbers where person_id=?;',
+      [personId],
+    );
+    if (phoneNumbersIds[0]) {
+      await connection.query(
+        'update phone_numbers set phone_number=? where person_id=? and phone_number_id=?',
         [
-          person.name.trim(),
-          person.address.trim(),
-          person.district_id,
-          person.notes?.trim(),
+          person.phone_number.trim(),
           personId,
-          personId,
+          phoneNumbersIds[0].phone_number_id,
         ],
       );
-      if (firstQueryResult[0].affectedRows == 0) {
-        return 0;
-      }
-      const phoneNumbersIds = await executeQuery<phoneNumbersIds[]>(
-        'select phone_number_id from phone_numbers where person_id=?;',
-         [personId],
+    }
+
+    if (person.second_phone_number !== undefined) {
+      if (phoneNumbersIds[1] === undefined)
+        await connection.query(
+          'insert into phone_numbers(person_id, phone_number) values (?, ?);',
+          [personId, person.second_phone_number.trim()],
         );
-      if (phoneNumbersIds[0]) {
+      else
         await connection.query(
           'update phone_numbers set phone_number=? where person_id=? and phone_number_id=?',
-          [person.phone_number.trim(), personId, phoneNumbersIds[0].phone_number_id],
+          [
+            person.second_phone_number.trim(),
+            personId,
+            phoneNumbersIds[1].phone_number_id,
+          ],
         );
-      }
-
-      if (person.second_phone_number != undefined) {
-        if (phoneNumbersIds[1] == undefined)
-          await connection.query(
-            'insert into phone_numbers(person_id, phone_number) values (?, ?);',
-            [personId, person.second_phone_number.trim()],
-          );
-        else
-          await connection.query(
-            'update phone_numbers set phone_number=? where person_id=? and phone_number_id=?',
-            [
-              person.second_phone_number.trim(),
-              personId,
-              phoneNumbersIds[1].phone_number_id,
-            ],
-          );
-      } else if (phoneNumbersIds[1]) {
-        await connection.query(
-          'delete from phone_numbers where phone_number_id=?',
-          [phoneNumbersIds[1].phone_number_id]
-        );
-      }
-
-      await connection.commit();
-      return firstQueryResult[0].affectedRows;
-    } catch (error) {
-      await connection.rollback();
-      throw error;
-    } finally {
-      connection.release();
+    } else if (phoneNumbersIds[1]) {
+      await connection.query(
+        'delete from phone_numbers where phone_number_id=?',
+        [phoneNumbersIds[1].phone_number_id],
+      );
     }
+
+    await connection.commit();
+    return firstQueryResult[0].affectedRows;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
 
 async function getPersonById(personId: number) {
-  try {
-    const results = await executeQuery(
-      'select * from persons where person_id = ?',
-      [personId],
-    );
-    return results;
-  } catch (error) {
-    throw error;
-  }
+  const results = await executeQuery(
+    'select * from persons where person_id = ?',
+    [personId],
+  );
+  return results;
 }
 
 async function getJoinedClasses(personId: number, type: 'student' | 'teacher') {
-  try {
-    const results = await executeQuery<classIds[]>(
-      `select class_id from person_class
-      where person_id = ? and type = ?`,
-      [personId, type],
-    );
-    return results;
-  } catch (error) {
-    throw error;
-  }
+  const results = await executeQuery<classIds[]>(
+    `select class_id from person_class
+    where person_id = ? and type = ?`,
+    [personId, type],
+  );
+  return results;
 }
 
 export default {
