@@ -1,5 +1,8 @@
 import express from 'express';
-import { hasRole, isAuthenticated } from '../middleware/authorization.middleware';
+import {
+  hasRole,
+  isAuthenticated,
+} from '../middleware/authorization.middleware';
 import { Roles } from '../enums/roles.enum';
 import { createAccountSchema } from '../schemas/accounts.schemas';
 import { validateData } from '../middleware/validation.middleware';
@@ -12,7 +15,7 @@ accountsRouter.use(isAuthenticated(), hasRole(Roles.manager));
 accountsRouter.post(
   '/create',
   validateData(createAccountSchema),
-  createAccount
+  createAccount,
 );
 
-export { accountsRouter };
+export default accountsRouter;

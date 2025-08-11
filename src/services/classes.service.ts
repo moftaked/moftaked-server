@@ -1,4 +1,4 @@
-import { executeQuery } from "./database.service"
+import { executeQuery } from './database.service';
 
 async function getUserJoinedClasses(userId: number) {
   return await executeQuery(
@@ -10,7 +10,8 @@ async function getUserJoinedClasses(userId: number) {
         SELECT class_id
         FROM roles
         WHERE account_id = ?
-      )`, [userId]
+      )`,
+    [userId],
   );
 }
 
@@ -30,8 +31,8 @@ async function getStudents(classId: number) {
      where class_id = ? and person_class.type = 'student'
      group by person_id
      order by student_name;
-    `, 
-    [classId]
+    `,
+    [classId],
   );
 }
 
@@ -51,8 +52,8 @@ async function getTeachers(classId: number) {
      where class_id = ? and person_class.type = 'teacher'
      group by person_id
      order by teacher_name;
-    `, 
-    [classId]
+    `,
+    [classId],
   );
 }
 

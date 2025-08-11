@@ -1,6 +1,6 @@
 {
   "extends": "./node_modules/gts/",
   "rules": {
-    "object-curly-spacing": ["always", "error"]
+    "object-curly-spacing": [2, "always"]
   }
 }

@@ -1,5 +1,5 @@
-import { CreateDistrictDto } from "../schemas/districts.schemas";
-import { executeQuery } from "./database.service";
+import { CreateDistrictDto } from '../schemas/districts.schemas';
+import { executeQuery } from './database.service';
 
 async function createDistrict(data: CreateDistrictDto) {
   await executeQuery(
@@ -7,7 +7,7 @@ async function createDistrict(data: CreateDistrictDto) {
       INSERT INTO districts (district_name)
       VALUES (?);
   `,
-  [data.name]
+    [data.name],
   );
   return;
 }
@@ -16,7 +16,7 @@ async function getDistricts() {
   const districts = await executeQuery(
     `
       SELECT district_id, district_name FROM districts;
-    `
+    `,
   );
   return districts;
 }
