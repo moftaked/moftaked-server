@@ -3,16 +3,17 @@ import { Roles } from '../enums/roles.enum';
 import accountsService from './accounts.service';
 import { executeQuery, getConnection } from './database.service';
 
-async function getRoles(accountId: number, classId?: number, schoolId?: number) {
+async function getRoles(accountId: number, classIds?: number[], schoolId?: number) {
   let queryStr = 'select class_id, role, school_id from roles where account_id = ?';
   const queryParams = [accountId];
   if(schoolId !== undefined) {
     queryStr = queryStr + ' and school_id = ?';
     queryParams.push(schoolId);
   }
-  if(classId !== undefined) {
-    queryStr = queryStr + ' and class_id = ?';
-    queryParams.push(classId);
+  if(classIds !== undefined) {
+    queryStr = queryStr + ' and class_id in (';
+    queryStr += classIds.map(() => '?').join(', ') + ')';
+    queryParams.push(...classIds);
   }
 
   const roles = await executeQuery<RowDataPacket[]>(
@@ -24,7 +25,7 @@ async function getRoles(accountId: number, classId?: number, schoolId?: number) 
 }
 
 async function getHighestRole(accountId: number, classId?: number, schoolId?: number) {
-  const roles = await getRoles(accountId, classId, schoolId);
+  const roles = await getRoles(accountId, classId? [classId] : undefined, schoolId);
   const isManager = roles.some(role => role['role'] === 'manager');
   if(isManager) {
     return Roles.manager;

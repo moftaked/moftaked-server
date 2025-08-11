@@ -45,10 +45,10 @@ function verify(token: string) {
   // return jwt.verify(token, jwtSecret, {algorithms: ['ES256']});
 }
 
-async function isInClass(userId: number, classId: number, authorizedRoles: Roles[]) {
-  const roles = await rolesService.getRoles(userId, classId);
+async function isInAnyClass(userId: number, classIds: number[], authorizedRoles: Roles[]) {
+  const roles = await rolesService.getRoles(userId, classIds);
   return roles.some(role => {
-    return role['class_id'] === classId && authorizedRoles.some(authorizedRole => authorizedRole === role['role'])
+    return classIds.includes(role['class_id']) && authorizedRoles.some(authorizedRole => authorizedRole === role['role'])
   });
 }
 
@@ -57,4 +57,4 @@ async function hasRole(userId: number, requiredRole: Roles) {
   return roles.some(role => role['role'] === requiredRole);
 };
 
-export default {signIn, init, verify, isInClass, hasRole}
+export default {signIn, init, verify, isInAnyClass, hasRole}
