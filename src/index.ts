@@ -4,6 +4,7 @@ import { init } from './services/database.service';
 import { DbConfig } from './types';
 import authService from './services/auth.service';
 import routes from './app.routes';
+import { handleError } from './middleware/errors.middleware';
 
 if (!process.env['DB_HOST']) throw new Error('DB_HOST is not defined');
 if (!process.env['DB_NAME']) throw new Error('DB_NAME is not defined');
@@ -37,6 +38,8 @@ app.use(express.json());
 routes.forEach(route => {
   app.use(route.path, route.router);
 });
+
+app.use(handleError);
 
 app.listen(port, () => {
   console.log(`app listening on port ${port}`);
