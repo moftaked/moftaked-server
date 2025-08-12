@@ -22,7 +22,7 @@ const personsRouter = express.Router();
 
 personsRouter.use(isAuthenticated());
 
-//todo: complete upload photos, delete persons, update/delete photos.
+//todo: complete upload photos, update/delete photos.
 personsRouter.post('/photos', upload.single('photo'), uploadPhoto);
 
 personsRouter.get(
