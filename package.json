@@ -5,7 +5,7 @@
   "main": "src/index.ts",
   "scripts": {
     "start:dev": "./node_modules/.bin/nodemon --ext ts",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "lint": "gts lint",
     "clean": "gts clean",
     "compile": "tsc",
@@ -30,10 +30,16 @@
     "zod": "^3.25.49"
   },
   "devDependencies": {
+    "@babel/core": "^7.28.0",
+    "@babel/preset-env": "^7.28.0",
+    "@babel/preset-typescript": "^7.27.1",
+    "@jest/globals": "^30.0.5",
     "@types/bcrypt": "^5.0.2",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^22.7.5",
+    "babel-jest": "^30.0.5",
     "gts": "^6.0.2",
+    "jest": "^30.0.5",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
