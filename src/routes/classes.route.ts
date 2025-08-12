@@ -5,6 +5,7 @@ import {
 } from '../middleware/authorization.middleware';
 import { Roles } from '../enums/roles.enum';
 import {
+  deletePerson,
   getClasses,
   getStudents,
   getTeachers,
@@ -28,6 +29,13 @@ classesRouter.get(
 classesRouter.delete(
   '/:classId/students/:studentId',
   isInClass('params', [Roles.teacher, Roles.leader, Roles.manager]),
+  deletePerson('student')
+);
+
+classesRouter.delete(
+  '/:classId/teachers/:teacherId',
+  isInClass('params', [Roles.leader, Roles.manager]),
+  deletePerson('teacher')
 );
 
 export default classesRouter;

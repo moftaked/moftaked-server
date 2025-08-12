@@ -144,9 +144,50 @@ async function getJoinedClasses(personId: number, type: 'student' | 'teacher') {
   return results;
 }
 
+async function unassignPerson(personId: number, classId: number, type: 'student' | 'teacher') {
+  const connection = await getConnection();
+  try {
+    await connection.beginTransaction();
+    const [result] = await connection.query<ResultSetHeader>(
+      'delete from person_class where person_id=? and class_id=? and type=?',
+      [personId, classId, type],
+    );
+    if (result.affectedRows === 0) {
+      return 0;
+    }
+    await connection.commit();
+    deletePersonIfNotInAnyClass(personId);
+    return result.affectedRows;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+async function deletePersonIfNotInAnyClass(personId: number) {
+  const connection = await getConnection();
+  try {
+    await connection.beginTransaction();
+    const [result] = await connection.query<ResultSetHeader>(
+      'delete from persons where person_id=? and person_id not in (select distinct person_id from person_class);',
+      [personId],
+    );
+    await connection.commit();
+    return result.affectedRows;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 export default {
   createPerson,
   getPersonById,
   updatePerson,
   getJoinedClasses,
+  unassignPerson,
 };
