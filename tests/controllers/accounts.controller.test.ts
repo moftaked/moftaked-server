@@ -21,7 +21,9 @@ describe('Accounts Controller', () => {
           real_name: 'Tony Stark',
         },
       } as any as Request;
-      const res = {} as any as Response;
+      const res = {
+        json: jest.fn(),
+      } as any as Response;
 
       await createAccount(req, res);
 
