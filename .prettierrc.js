@@ -1,3 +1,3 @@
 export default {
-  ...require('gts/.prettierrc.json'),
+  ...import('gts/.prettierrc.json'),
 };
