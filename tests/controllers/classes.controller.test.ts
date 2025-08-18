@@ -170,5 +170,24 @@ describe('Classes Controller', () => {
       expect(next).toHaveBeenCalledWith(createHttpError(400, 'Invalid person ID or class ID'));
       expect(mockedPersonsService.unassignPerson).not.toHaveBeenCalled();
     });
+
+    it('should return 404 if deleted rows are 0', async () => {
+      mockedPersonsService.unassignPerson.mockResolvedValue(0);
+
+      const handler = deletePerson('teacher');
+      const req = {
+        params: { teacherId: '789', classId: '456' }
+      } as any as Request;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn()
+      } as any as Response;
+      const next = jest.fn();
+
+      await handler(req, res, next);
+
+      expect(mockedPersonsService.unassignPerson).toHaveBeenCalledWith(789, 456, 'teacher');
+      expect(next).toHaveBeenCalledWith(createHttpError(404, 'Person not found or not assigned to class'));
+    });
   });
 });
