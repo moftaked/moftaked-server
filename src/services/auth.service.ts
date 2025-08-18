@@ -4,6 +4,7 @@ import { executeQuery } from './database.service';
 import jwt from 'jsonwebtoken';
 import { Roles } from '../enums/roles.enum';
 import rolesService from './roles.service';
+import { InvalidCredentialsError, UserNotFoundError } from '../errors/auth.errors';
 
 let jwtSecret: string;
 
@@ -16,10 +17,10 @@ async function signIn(username: string, password: string) {
     'select account_id, username, password, real_name from accounts where username = ?',
     [username],
   );
-  if (!userTableResults[0]) throw new Error('user not found'); // todo: implement better error type
+  if (!userTableResults[0]) throw new UserNotFoundError();
   const user = userTableResults[0];
   if ((await compare(password, user.password)) === false) {
-    throw new Error('unauthorized'); // todo: implement better error type
+    throw new InvalidCredentialsError();
   }
   const roles = await rolesService.getRoles(user.account_id);
   const payload = { sub: user.account_id, username: user.username };
