@@ -7,7 +7,7 @@
     "dev": "./node_modules/.bin/nodemon --ext ts",
     "test": "jest",
     "compile": "tsc",
-    "prepare": "npm run compile",
+    "prepare": "husky install",
     "pretest": "npm run compile"
   },
   "keywords": [],
@@ -38,6 +38,7 @@
     "@types/node": "^22.7.5",
     "babel-jest": "^30.0.5",
     "gts": "^6.0.2",
+    "husky": "^8.0.0",
     "jest": "^30.0.5",
     "nodemon": "^3.1.10",
     "ts-jest": "^29.4.1",
