@@ -5,12 +5,11 @@ import { StatusCodes } from 'http-status-codes';
 import { EventDto, EventOccurrenceDto } from '../schemas/events.schemas';
 
 export async function getEvents(req: Request, res: Response) {
-  let classId: string | number | undefined = req.params['classId'];
-  if (!classId) {
+  let classId: number = parseInt(req.params['classId']!);
+  if (isNaN(classId)) {
     res.status(400).json({ error: 'Invalid class ID' }); // handle this in the global error handler
     return;
   }
-  classId = parseInt(classId);
   const userId: number = res.locals['user']['sub'];
   const userRole = await rolesService.getHighestRole(userId, classId);
   res.status(StatusCodes.OK).json({
@@ -28,12 +27,11 @@ export async function createEvent(req: Request, res: Response) {
 }
 
 export async function deleteEvent(req: Request, res: Response) {
-  let eventId: string | number | undefined = req.params['eventId'];
-  if (!eventId) {
+  let eventId: number = parseInt(req.params['eventId']!);
+  if (isNaN(eventId)) {
     res.status(400).json({ error: 'Invalid event ID' }); // handle this in the global error handler
     return;
   }
-  eventId = parseInt(eventId);
   await eventsService.deleteEvent(eventId);
   res.status(StatusCodes.OK).json({
     success: true,

@@ -13,14 +13,11 @@ export async function addRole(req: Request, res: Response) {
 }
 
 export async function getRoles(req: Request, res: Response) {
-  let userId: number | string | undefined = req.params['userId'];
-  if (userId) {
-    userId = parseInt(userId);
-    if (isNaN(userId) === false) {
-      const result = await rolesService.getRoles(userId);
-      res.json(result);
-    } else {
-      res.status(400).json({ error: 'Invalid user ID' });
-    }
+  let userId: number = parseInt(req.params['userId']!);
+  if (!isNaN(userId)) {
+    const result = await rolesService.getRoles(userId);
+    res.json(result);
+  } else {
+    res.status(400).json({ error: 'Invalid user ID' });
   }
 }
