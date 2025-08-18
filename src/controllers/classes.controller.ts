@@ -10,9 +10,8 @@ export async function getClasses(_req: Request, res: Response) {
 }
 
 export async function getStudents(req: Request, res: Response) {
-  let classId: string | number | undefined = req.params['classId'];
-  if (classId) {
-    classId = parseInt(classId);
+  let classId: number = parseInt(req.params['classId']!);
+  if (!isNaN(classId)) {
     const students = await classesService.getStudents(classId);
     res.status(StatusCodes.OK).json({ success: true, data: students });
   } else {
@@ -21,9 +20,8 @@ export async function getStudents(req: Request, res: Response) {
 }
 
 export async function getTeachers(req: Request, res: Response) {
-  let classId: string | number | undefined = req.params['classId'];
-  if (classId) {
-    classId = parseInt(classId);
+  let classId: number = parseInt(req.params['classId']!);
+  if (!isNaN(classId)) {
     const teachers = await classesService.getTeachers(classId);
     res.status(StatusCodes.OK).json({ success: true, data: teachers });
   } else {
@@ -33,8 +31,8 @@ export async function getTeachers(req: Request, res: Response) {
 
 export function deletePerson(type: 'student' | 'teacher') {
   return async (req: Request, res: Response) => {
-    const personId = parseInt(req.params[type == 'student' ? 'studentId' : 'teacherId'] || '');
-    const classId = parseInt(req.params['classId'] || '');
+    const personId = parseInt(req.params[type == 'student' ? 'studentId' : 'teacherId']!);
+    const classId = parseInt(req.params['classId']!);
     if (isNaN(personId) || isNaN(classId)) {
       res.status(400).json({ error: 'Invalid person ID or class ID' });
       return;
