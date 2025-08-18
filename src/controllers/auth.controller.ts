@@ -15,8 +15,3 @@ export async function signIn(req: Request, res: Response, next: NextFunction) {
     next(error);
   }
 }
-
-export async function verifyToken(req: Request, res: Response) {
-  const result = authService.verify(req.body.token);
-  res.status(StatusCodes.OK).json({ success: true, data: result });
-}
