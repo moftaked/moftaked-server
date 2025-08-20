@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { getClasses, getStudents, getTeachers, deletePerson } from '../../src/controllers/classes.controller';
 import classesService from '../../src/services/classes.service';
 import personsService from '../../src/services/persons.service';
+import { StatusCodes } from 'http-status-codes';
 
 const createHttpError = require('http-errors');
 
@@ -62,7 +63,7 @@ describe('Classes Controller', () => {
 
       await getStudents(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(createHttpError(400, 'Invalid class ID'));
+      expect(next).toHaveBeenCalledWith(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid class ID'));
       expect(mockedClassesService.getStudents).not.toHaveBeenCalled();
     });
   });
@@ -96,7 +97,7 @@ describe('Classes Controller', () => {
 
       await getTeachers(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(createHttpError(400, 'Invalid class ID'));
+      expect(next).toHaveBeenCalledWith(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid class ID'));
       expect(mockedClassesService.getTeachers).not.toHaveBeenCalled();
     });
   });
@@ -133,7 +134,7 @@ describe('Classes Controller', () => {
 
       await handler(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(createHttpError(400, 'Invalid person ID or class ID'));
+      expect(next).toHaveBeenCalledWith(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid person ID or class ID'));
       expect(mockedPersonsService.unassignPerson).not.toHaveBeenCalled();
     });
 
@@ -150,7 +151,7 @@ describe('Classes Controller', () => {
 
       await handler(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(createHttpError(400, 'Invalid person ID or class ID'));
+      expect(next).toHaveBeenCalledWith(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid person ID or class ID'));
       expect(mockedPersonsService.unassignPerson).not.toHaveBeenCalled();
     });
     
@@ -167,7 +168,7 @@ describe('Classes Controller', () => {
 
       await handler(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(createHttpError(400, 'Invalid person ID or class ID'));
+      expect(next).toHaveBeenCalledWith(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid person ID or class ID'));
       expect(mockedPersonsService.unassignPerson).not.toHaveBeenCalled();
     });
 
