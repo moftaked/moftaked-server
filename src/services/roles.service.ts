@@ -44,7 +44,11 @@ async function getHighestRole(
   if (isLeader) {
     return Roles.leader;
   }
-  return Roles.teacher;
+  const isTeacher = roles.some(role => role['role'] === 'teacher');
+  if (isTeacher) {
+    return Roles.teacher;
+  }
+  return undefined;
 }
 
 async function addRole(user: number | string, classId: number, role: Roles) {
