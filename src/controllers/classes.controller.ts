@@ -13,7 +13,7 @@ export async function getClasses(_req: Request, res: Response) {
 export async function getStudents(req: Request, res: Response, next: NextFunction) {
   let classId: number = parseInt(req.params['classId']!);
   if (isNaN(classId)) {
-    return next(createHttpError(400, 'Invalid class ID'));
+    return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid class ID'));
   }
   const students = await classesService.getStudents(classId);
   res.status(StatusCodes.OK).json({ success: true, data: students });
@@ -22,7 +22,7 @@ export async function getStudents(req: Request, res: Response, next: NextFunctio
 export async function getTeachers(req: Request, res: Response, next: NextFunction) {
   let classId: number = parseInt(req.params['classId']!);
   if (isNaN(classId)) {
-    return next(createHttpError(400, 'Invalid class ID'));
+    return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid class ID'));
   }
   const teachers = await classesService.getTeachers(classId);
   res.status(StatusCodes.OK).json({ success: true, data: teachers });
@@ -33,7 +33,7 @@ export function deletePerson(type: 'student' | 'teacher') {
     const personId = parseInt(req.params[type == 'student' ? 'studentId' : 'teacherId']!);
     const classId = parseInt(req.params['classId']!);
     if (isNaN(personId) || isNaN(classId)) {
-      return next(createHttpError(400, 'Invalid person ID or class ID'));
+      return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid person ID or class ID'));
     }
     const result = await personsService.unassignPerson(personId, classId, type);
     if (result === 0) {

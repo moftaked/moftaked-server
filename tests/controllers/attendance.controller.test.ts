@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { patchAttendance } from '../../src/controllers/attendance.controller';
 import attendanceService from '../../src/services/attendance.service';
 import { PatchAttendanceDto } from '../../src/schemas/attendance.schemas';
+import { StatusCodes } from 'http-status-codes';
 const createHttpError = require('http-errors');
 
 jest.mock('../../src/services/attendance.service');
@@ -58,7 +59,7 @@ describe('Attendance Controller', () => {
       const next = jest.fn();
       await handler(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(createHttpError(400, 'Event occurrence ID is required'));
+      expect(next).toHaveBeenCalledWith(createHttpError(StatusCodes.BAD_REQUEST, 'Event occurrence ID is required'));
       expect(mockedAttendanceService.patchAttendance).not.toHaveBeenCalled();
     });
   });
