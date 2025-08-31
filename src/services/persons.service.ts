@@ -129,7 +129,18 @@ async function updatePerson(personId: number, person: UpdatePersonDto) {
 
 async function getPersonById(personId: number) {
   const results = await executeQuery(
-    'select * from persons where person_id = ?',
+    `select 
+      person_id, 
+      person_name, 
+      address, 
+      photo_link, 
+      notes, 
+      district_name 
+      group_concat(phone_numbers.phone_number separator ', ') as phone_numbers
+    from persons 
+    inner join districts using(district_id) 
+    inner join phone_numbers using(person_id)
+    where person_id = ?`,
     [personId],
   );
   return results;
