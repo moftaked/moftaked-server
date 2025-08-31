@@ -22,8 +22,22 @@ const personsRouter = express.Router();
 
 personsRouter.use(isAuthenticated());
 
-//todo: complete upload photos, update/delete photos.
+//todo: cron job to delete unused uploaded photos, and a rate limiter on upload image routes.
 personsRouter.post('/photos', upload.single('photo'), uploadPhoto);
+
+personsRouter.post(
+  '/students',
+  validateData(createPersonSchema),
+  isInClass('body', [Roles.teacher, Roles.leader, Roles.manager]),
+  createPerson('student'),
+);
+
+personsRouter.post(
+  '/teachers',
+  validateData(createPersonSchema),
+  isInClass('body', [Roles.leader, Roles.manager]),
+  createPerson('teacher'),
+);
 
 personsRouter.get(
   '/students/:studentId',
@@ -41,19 +55,6 @@ personsRouter.get(
   getPersonById('teacher'),
 );
 
-personsRouter.post(
-  '/students',
-  validateData(createPersonSchema),
-  isInClass('body', [Roles.teacher, Roles.leader, Roles.manager]),
-  createPerson('student'),
-);
-
-personsRouter.post(
-  '/teachers',
-  validateData(createPersonSchema),
-  isInClass('body', [Roles.leader, Roles.manager]),
-  createPerson('teacher'),
-);
 
 personsRouter.put(
   '/students/:studentId',

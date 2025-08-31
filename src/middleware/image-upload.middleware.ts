@@ -12,7 +12,7 @@ const upload = multer({
   storage,
   fileFilter: (_req, file, cb) => {
     if (file.mimetype !== 'image/webp') {
-      return cb(new Error('Only image files are allowed!'));
+      return cb(new Error('Only webp image files are allowed!'));
     }
     cb(null, true);
   },

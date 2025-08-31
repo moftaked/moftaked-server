@@ -3,20 +3,21 @@ import attendanceRouter from './routes/attendance.route';
 import authRouter from './routes/auth.route';
 import classesRouter from './routes/classes.route';
 import eventsRouter from './routes/events.route';
+import { personsRouter } from './routes/persons.route';
 import rolesRouter from './routes/roles.route';
 
 const routes = [
-  {
-    path: '/auth',
-    router: authRouter,
-  },
   {
     path: '/accounts',
     router: accountsRouter,
   },
   {
-    path: '/roles',
-    router: rolesRouter,
+    path: '/attendance',
+    router: attendanceRouter
+  },
+  {
+    path: '/auth',
+    router: authRouter,
   },
   {
     path: '/classes',
@@ -27,8 +28,12 @@ const routes = [
     router: eventsRouter,
   },
   {
-    path: '/attendance',
-    router: attendanceRouter,
+    path: '/persons',
+    router: personsRouter
+  },
+  {
+    path: '/roles',
+    router: rolesRouter,
   },
 ];
 
