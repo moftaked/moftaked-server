@@ -162,6 +162,7 @@ describe('Events Controller', () => {
 
   describe('createEventOccurrence', () => {
     it('should call eventsService.createEventOccurrence with the correct parameters', async () => {
+      jest.useFakeTimers();
       jest.setSystemTime(new Date('2025-07-20T10:30:00Z'));
       const req = {
         body: {
@@ -176,7 +177,7 @@ describe('Events Controller', () => {
 
       await createEventOccurrence(req, res);
 
-      expect(mockedEventsService.createEventOccurrence).toHaveBeenCalledWith(1, '2025-08-20');
+      expect(mockedEventsService.createEventOccurrence).toHaveBeenCalledWith(1, '2025-07-20');
     });
   });
 
