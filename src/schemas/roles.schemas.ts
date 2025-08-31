@@ -8,6 +8,7 @@ export const addRoleSchema = z.object({
     .min(1)
     .max(50)
     .regex(/^[a-z_0-9]+$/)
+    .trim()
     .or(z.number()),
   classId: z.number(),
   role: z.enum(Roles),

@@ -9,7 +9,7 @@ export type EventOccurrenceDto = z.infer<typeof EventOccurrenceSchema>;
 
 export const EventSchema = z.object({
   classId: z.number().int().positive(),
-  eventName: z.string().min(2).max(50),
+  eventName: z.string().min(2).max(50).trim(),
   type: z.enum(eventTypes),
 });
 
