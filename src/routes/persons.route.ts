@@ -1,5 +1,6 @@
 import express from 'express';
 import {
+  hasRole,
   isAuthenticated,
   isInClass,
   isInPersonClass,
@@ -13,6 +14,7 @@ import {
 import {
   createPerson,
   getPersonById,
+  searchByName,
   updatePerson,
   uploadPhoto,
 } from '../controllers/persons.controller';
@@ -38,6 +40,11 @@ personsRouter.post(
   isInClass('body', [Roles.leader, Roles.manager]),
   createPerson('teacher'),
 );
+
+//todo: cron job to normalize unprocessed person names on database update
+personsRouter.get('/students', searchByName('student'));
+
+personsRouter.get('/teachers', hasRole([Roles.teacher, Roles.manager]), searchByName('teacher'));
 
 personsRouter.get(
   '/students/:studentId',

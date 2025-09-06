@@ -1,6 +1,7 @@
 import { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import { executeQuery, getConnection } from './database.service';
 import { CreatePersonDto, UpdatePersonDto } from '../schemas/persons.schemas';
+import * as arabic from '@flowdegree/arabic-strings';
 
 interface phoneNumbersIds extends RowDataPacket {
   [column: number]: unknown;
@@ -146,6 +147,23 @@ async function getPersonById(personId: number) {
   return results;
 }
 
+async function searchByName(name: string, type: 'student' | 'teacher', classIds: number[]) {
+  const searchTerm = '%' + arabic.sanitize(name).replaceAll(' ', '%') + '%';
+  const results = await executeQuery(
+    `select distinct 
+      person_id, 
+      person_name,
+      group_concat(person_class.class_id separator ', ') as classIds 
+    from persons 
+    inner join person_class using(person_id)
+    where type = ? and class_id in (${classIds.map(() => '?').join(',')}) and normalized_person_name like ?
+    group by person_id
+    `,
+    [type, ...classIds, searchTerm]
+  );
+  return results;
+}
+
 async function getJoinedClasses(personId: number, type: 'student' | 'teacher') {
   const results = await executeQuery<classIds[]>(
     `select class_id from person_class
@@ -198,6 +216,7 @@ async function deletePersonIfNotInAnyClass(personId: number) {
 export default {
   createPerson,
   getPersonById,
+  searchByName,
   updatePerson,
   getJoinedClasses,
   unassignPerson,

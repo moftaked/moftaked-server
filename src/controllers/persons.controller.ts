@@ -1,7 +1,10 @@
 import { StatusCodes } from 'http-status-codes';
 import { CreatePersonDto, UpdatePersonDto } from '../schemas/persons.schemas';
 import personsService from '../services/persons.service';
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
+import { Err } from 'result2';
+import classesService from '../services/classes.service';
+import { authenticatedLocals } from '../middleware/authorization.middleware';
 
 export function createPerson(type: 'student' | 'teacher') {
   return async (req: Request, res: Response) => {
@@ -41,6 +44,20 @@ export function getPersonById(type: 'student' | 'teacher') {
         .json({ success: false, message: 'Error retrieving person' });
     }
   };
+}
+
+export function searchByName(type: 'student' | 'teacher') {
+  return async (req: Request<any, any, any, {name: string}>, res: Response<any, authenticatedLocals>, next: NextFunction) => {
+    const name: string = req.query.name;
+    const userId: number = res.locals.user.sub;
+    if (!name) {
+      return next(Err(StatusCodes.BAD_REQUEST));
+    }
+    const joinedClasses = (await classesService.getUserJoinedClasses(userId))
+    .map(classRow => classRow['class_id'] as number);
+    const results = await personsService.searchByName(name, type, joinedClasses);
+    res.status(StatusCodes.OK).json(results);
+  }
 }
 
 export function updatePerson(type: 'student' | 'teacher') {
