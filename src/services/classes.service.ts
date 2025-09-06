@@ -1,7 +1,8 @@
+import { RowDataPacket } from 'mysql2';
 import { executeQuery } from './database.service';
 
 async function getUserJoinedClasses(userId: number) {
-  return await executeQuery(
+  return await executeQuery<RowDataPacket[]>(
     `SELECT 
       distinct class_id,
       class_name

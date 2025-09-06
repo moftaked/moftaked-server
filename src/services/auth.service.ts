@@ -65,9 +65,11 @@ async function isInAnyClass(
   });
 }
 
-async function hasRole(userId: number, requiredRole: Roles) {
+async function hasRole(userId: number, requiredRoles: Roles[]) {
   const roles = await rolesService.getRoles(userId);
-  return roles.some(role => role['role'] === requiredRole);
+  return roles
+  .some(userRole => requiredRoles
+    .some(requiredRole => userRole['role'] === requiredRole));
 }
 
 export default { signIn, init, verify, isInAnyClass, hasRole };

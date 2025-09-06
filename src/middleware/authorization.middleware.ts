@@ -5,11 +5,14 @@ import authService from '../services/auth.service';
 import { JwtPayload } from 'jsonwebtoken';
 import personsService from '../services/persons.service';
 import createHttpError from 'http-errors';
+import { Err } from 'result2';
+
+export type authenticatedLocals = {user: { sub: number, username: string }};
 
 export function isAuthenticated() {
   return (req: Request, res: Response, next: NextFunction) => {
     const token = req.headers.authorization;
-    if (token === undefined) return next(createHttpError(StatusCodes.UNAUTHORIZED));
+    if (token === undefined) return next(Err(StatusCodes.UNAUTHORIZED));
     const decodedToken: JwtPayload = authService.verify(token);
     res.locals['user'] = decodedToken['payload'];
     next();
@@ -58,10 +61,10 @@ export function isInPersonClass(
   };
 }
 
-export function hasRole(requiredRole: Roles) {
+export function hasRole(requiredRoles: Roles[]) {
   return async (_req: Request, res: Response, next: NextFunction) => {
     const user: { sub: number; username: string } = res.locals['user'];
-    const authorized = await authService.hasRole(user.sub, requiredRole);
+    const authorized = await authService.hasRole(user.sub, requiredRoles);
     if (!authorized) return next(createHttpError(StatusCodes.FORBIDDEN, 'You are not authorized to perform this action'));
     next();
   };

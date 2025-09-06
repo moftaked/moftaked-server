@@ -10,7 +10,7 @@ import { createAccount } from '../controllers/accounts.controller';
 
 const accountsRouter = express.Router();
 
-accountsRouter.use(isAuthenticated(), hasRole(Roles.manager));
+accountsRouter.use(isAuthenticated(), hasRole([Roles.manager]));
 
 accountsRouter.post(
   '/create',
