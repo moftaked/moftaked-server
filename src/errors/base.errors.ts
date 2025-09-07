@@ -7,3 +7,7 @@ export class ApplicationError extends Error {
     Error.captureStackTrace(this, this.constructor);
   }
 }
+
+import { Err } from "result2";
+
+export type HttpErr = Err<number>;
