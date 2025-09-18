@@ -4,7 +4,7 @@
   "description": "a complete rewrite with express js to improve testability, and flexibility of moftaked api",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "./node_modules/.bin/nodemon --ext ts",
+    "dev": "nodemon",
     "test": "jest",
     "compile": "tsc",
     "prepare": "husky install",
