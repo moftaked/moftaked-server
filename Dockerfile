@@ -1,5 +1,8 @@
 FROM node:20-alpine
 
+# Install nodemon globally for development
+RUN npm install -g nodemon
+
 # Set working directory
 WORKDIR /app
 
@@ -17,9 +20,6 @@ RUN mkdir -p uploads/images
 
 # Expose the port
 EXPOSE 3000
-
-# Install nodemon globally for development
-RUN npm install -g nodemon
 
 # Start the application with nodemon for hot reloading
 CMD ["npm", "run", "dev"]
