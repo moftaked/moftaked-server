@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import 'dotenv/config';
 import { init } from './services/database.service';
 import { DbConfig } from './types';
@@ -32,6 +33,14 @@ authService.init(process.env['JWT_SECRET']!);
 const app = express();
 const port = 3000;
 
+const corsOptions = {
+  origin:['https://moftaked.hopto.org', 'http://127.0.0.1', 'http://localhost:5173', 'http://192.168.1.8:5173'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+};
+
+app.use(cors(corsOptions));
 app.use(express.static('public'));
 app.use(express.json());
 
