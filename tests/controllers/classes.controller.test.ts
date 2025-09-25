@@ -30,7 +30,7 @@ describe('Classes Controller', () => {
 
       await getClasses(req, res);
 
-      expect(mockedClassesService.getUserJoinedClasses).toHaveBeenCalledWith(123);
+      expect(mockedClassesService.getUserJoinedSchoolsClasses).toHaveBeenCalledWith(123);
     });
   });
 
