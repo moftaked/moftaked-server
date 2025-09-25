@@ -6,7 +6,9 @@ import { HttpErr } from "../errors/base.errors";
 import { JsonWebTokenError } from "jsonwebtoken";
 
 export function handleError(err: HttpErr | Error, _req: Request, res: Response, _next: NextFunction) {
-  if (err instanceof ZodError) {
+  if (typeof err === "number") {
+    res.status(err).end();
+  } else if (err instanceof ZodError) {
     res.status(StatusCodes.BAD_REQUEST).json({ details: err.issues });
   } else if (err instanceof JsonWebTokenError) {
     res.status(StatusCodes.UNAUTHORIZED).end();

@@ -2,6 +2,8 @@ import { expect, jest, describe, it, afterEach } from '@jest/globals';
 import { Request, Response } from 'express';
 import { signIn } from '../../src/controllers/auth.controller';
 import authService from '../../src/services/auth.service';
+import { Err, Ok } from 'result2';
+import { StatusCodes } from 'http-status-codes';
 
 jest.mock('../../src/services/auth.service');
 
@@ -24,7 +26,11 @@ describe('Auth Controller', () => {
         status: jest.fn().mockReturnThis(),
         json: jest.fn(),
       } as any as Response;
-
+      mockedAuthService.signIn.mockResolvedValue(Ok({
+        access_token: 'mock_token',
+        user_id: 123,
+        roles: '["user"]',
+      }));
       const next = jest.fn();
       await signIn(req, res, next);
 
@@ -32,7 +38,7 @@ describe('Auth Controller', () => {
     });
 
     it('should catch errors thrown from service', async () => {
-      mockedAuthService.signIn.mockRejectedValue(new Error('Sign in failed'));
+      mockedAuthService.signIn.mockResolvedValue(Err(StatusCodes.UNAUTHORIZED));
       const req = {
         body: {
           username: 'testuser',
@@ -41,12 +47,13 @@ describe('Auth Controller', () => {
       } as any as Request;
       const res = {
         status: jest.fn().mockReturnThis(),
+        end: jest.fn(),
         json: jest.fn(),
       } as any as Response;
 
       const next = jest.fn();
       await signIn(req, res, next);
-      expect(next).toHaveBeenCalledWith(expect.any(Error));
+      expect(next).toHaveBeenCalledWith(StatusCodes.UNAUTHORIZED);
       expect(res.status).not.toHaveBeenCalled();
       expect(mockedAuthService.signIn).toHaveBeenCalledWith('testuser', 'testpass');
     });

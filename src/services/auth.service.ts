@@ -4,7 +4,8 @@ import { executeQuery } from './database.service';
 import jwt from 'jsonwebtoken';
 import { Roles } from '../enums/roles.enum';
 import rolesService from './roles.service';
-import { InvalidCredentialsError, UserNotFoundError } from '../errors/auth.errors';
+import { Err, Ok } from 'result2';
+import { StatusCodes } from 'http-status-codes';
 
 let jwtSecret: string;
 
@@ -17,18 +18,18 @@ async function signIn(username: string, password: string) {
     'select account_id, username, password, real_name from accounts where username = ?',
     [username],
   );
-  if (!userTableResults[0]) throw new UserNotFoundError();
+  if (!userTableResults[0]) return Err(StatusCodes.NOT_FOUND);
   const user = userTableResults[0];
   if ((await compare(password, user.password)) === false) {
-    throw new InvalidCredentialsError();
+    return Err(StatusCodes.UNAUTHORIZED);
   }
   const roles = await rolesService.getRoles(user.account_id);
   const payload = { sub: user.account_id, username: user.username };
-  return {
+  return Ok({
     access_token: generateAccessToken(payload),
     user_id: user.account_id,
     roles: JSON.stringify(roles),
-  };
+  });
 }
 
 async function compare(password: string, hashed: string) {
