@@ -53,8 +53,11 @@ export function searchByName(type: 'student' | 'teacher') {
     if (!name) {
       return next(Err(StatusCodes.BAD_REQUEST));
     }
-    const joinedClasses = (await classesService.getUserJoinedClasses(userId))
-    .map(classRow => classRow['class_id'] as number);
+    const joinedClasses = (await classesService.getUserJoinedSchoolsClasses(userId))
+    .map(school => school.classes).reduce((classes, schoolClasses) => {
+      classes.push(...schoolClasses)
+      return classes;
+    }, []).map(c => c.class_id);
     const results = await personsService.searchByName(name, type, joinedClasses);
     res.status(StatusCodes.OK).json(results);
   }

@@ -1,12 +1,15 @@
 import { RowDataPacket } from 'mysql2';
 import { executeQuery } from './database.service';
 
-async function getUserJoinedClasses(userId: number) {
-  return await executeQuery<RowDataPacket[]>(
-    `SELECT 
-      distinct class_id,
+async function getUserJoinedSchoolsClasses(userId: number) {
+  const classRows = await executeQuery<RowDataPacket[]>(
+    `SELECT
+      school_id,
+      school_name,
+      class_id,
       class_name
       FROM classes
+      inner join schools using(school_id)
       WHERE class_id IN (
         SELECT class_id
         FROM roles
@@ -14,6 +17,17 @@ async function getUserJoinedClasses(userId: number) {
       )`,
     [userId],
   );
+  const classes: { school_id: number; school_name: string; classes: {class_id: number; class_name: string}[] }[] = [];
+  for (const row of classRows) {
+    const { school_id, school_name, class_id, class_name } = row;
+    let school = classes.find(c => c.school_id === school_id);
+    if (!school) {
+      school = { school_id, school_name, classes: [] };
+      classes.push(school);
+    }
+    school.classes.push({ class_id, class_name });
+  }
+  return classes;
 }
 
 async function getStudents(classId: number) {
@@ -58,4 +72,4 @@ async function getTeachers(classId: number) {
   );
 }
 
-export default { getStudents, getTeachers, getUserJoinedClasses };
+export default { getStudents, getTeachers, getUserJoinedSchoolsClasses };

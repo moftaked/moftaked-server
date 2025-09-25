@@ -6,8 +6,8 @@ import createHttpError from 'http-errors';
 
 export async function getClasses(_req: Request, res: Response) {
   const userId: number = res.locals['user']['sub'];
-  const classes = await classesService.getUserJoinedClasses(userId);
-  res.status(StatusCodes.OK).json({ success: true, data: classes });
+  const classes = await classesService.getUserJoinedSchoolsClasses(userId);
+  res.status(StatusCodes.OK).json(classes);
 }
 
 export async function getStudents(req: Request, res: Response, next: NextFunction) {
