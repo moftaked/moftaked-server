@@ -18,6 +18,7 @@ export async function getEvents(req: Request, res: Response, next: NextFunction)
   res.status(StatusCodes.OK).json({
     success: true,
     data: await eventsService.getEvents(userRole, classId),
+    role: userRole,
   });
 }
 
@@ -51,4 +52,13 @@ export async function deleteLastEventOccurrence(req: Request, res: Response) {
   const body: EventOccurrenceDto = req.body;
   await eventsService.deleteLastEventOccurrence(body.eventId);
   res.status(StatusCodes.OK).json({ success: true });
+}
+
+export async function getEventOccurrences(req: Request, res: Response, next: NextFunction) {
+  const eventId = parseInt(req.params['eventId']!);
+  if (isNaN(eventId)) {
+    return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid event ID'));
+  }
+  const occurrences = await eventsService.getEventOccurrences(eventId);
+  res.status(StatusCodes.OK).json({ success: true, data: occurrences });
 }

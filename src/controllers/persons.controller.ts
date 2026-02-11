@@ -5,6 +5,8 @@ import { NextFunction, Request, Response } from 'express';
 import { Err } from 'result2';
 import classesService from '../services/classes.service';
 import { authenticatedLocals } from '../middleware/authorization.middleware';
+import path from 'path';
+import fs from 'fs';
 
 export function createPerson(type: 'student' | 'teacher') {
   return async (req: Request, res: Response) => {
@@ -31,13 +33,15 @@ export function getPersonById(type: 'student' | 'teacher') {
 
     try {
       const person = await personsService.getPersonById(personId);
-      if (!person) {
+      if (!person || (Array.isArray(person) && person.length === 0)) {
         res
           .status(StatusCodes.NOT_FOUND)
           .json({ success: false, message: 'Person not found' });
         return;
       }
-      res.status(StatusCodes.OK).json({ success: true, data: person });
+      const personData = Array.isArray(person) ? person[0] : person;
+      const classes = await personsService.getPersonClasses(personId);
+      res.status(StatusCodes.OK).json({ success: true, data: { ...personData, type, classes } });
     } catch (error) {
       res
         .status(StatusCodes.INTERNAL_SERVER_ERROR)
@@ -126,4 +130,58 @@ export async function uploadPhoto(req: Request, res: Response) {
       message: 'Error uploading photo',
     });
   }
+}
+
+export function uploadPersonPhoto(type: 'student' | 'teacher') {
+  return async (req: Request, res: Response) => {
+    const personId = parseInt(
+      type === 'student' ? req.params['studentId']! : req.params['teacherId']!,
+      10,
+    );
+    if (isNaN(personId)) {
+      res
+        .status(StatusCodes.BAD_REQUEST)
+        .json({ success: false, message: 'Invalid person ID' });
+      return;
+    }
+
+    if (!req.file) {
+      res.status(StatusCodes.BAD_REQUEST).json({
+        success: false,
+        message: 'No photo file uploaded',
+      });
+      return;
+    }
+
+    try {
+      // Get old photo to delete it later
+      const person = await personsService.getPersonById(personId) as any[];
+      const oldPhotoLink = person?.[0]?.photo_link;
+
+      // Update the person's photo_link in the database
+      const filename = req.file.filename;
+      await personsService.updatePersonPhoto(personId, filename);
+
+      // Delete old photo file if it exists
+      if (oldPhotoLink) {
+        const oldPath = path.join('uploads', 'images', oldPhotoLink);
+        fs.unlink(oldPath, () => {}); // fire-and-forget
+      }
+
+      res.status(StatusCodes.OK).json({
+        success: true,
+        message: 'Photo uploaded and linked successfully',
+        data: { filename },
+      });
+    } catch (error) {
+      // Clean up uploaded file on error
+      if (req.file) {
+        fs.unlink(req.file.path, () => {});
+      }
+      res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: 'Error uploading photo',
+      });
+    }
+  };
 }

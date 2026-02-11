@@ -7,6 +7,7 @@ import {
 import { Roles } from '../enums/roles.enum';
 import {
   getEvents,
+  getEventOccurrences,
   createEventOccurrence,
   deleteLastEventOccurrence,
   createEvent,
@@ -18,6 +19,7 @@ const eventsRouter = express.Router();
 eventsRouter.use(isAuthenticated());
 
 eventsRouter.get('/classes/:classId', getEvents);
+eventsRouter.get('/:eventId/occurrences', getEventOccurrences);
 eventsRouter.post(
   '/occurrences',
   validateData(EventOccurrenceSchema),

@@ -2,6 +2,7 @@ import { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import { executeQuery, getConnection } from './database.service';
 import { CreatePersonDto, UpdatePersonDto } from '../schemas/persons.schemas';
 import * as arabic from '@flowdegree/arabic-strings';
+import dataVersionsService from './data-versions.service';
 
 interface phoneNumbersIds extends RowDataPacket {
   [column: number]: unknown;
@@ -25,9 +26,10 @@ async function createPerson(
   try {
     await connection.beginTransaction();
     const [personResult] = await connection.query<ResultSetHeader>(
-      'insert into persons(person_name, address, district_id, notes) values (?, ?, ?, ?);',
+      'insert into persons(person_name, normalized_person_name, address, district_id, notes) values (?, ?, ?, ?, ?);',
       [
         data.name.trim(),
+        arabic.sanitize(data.name.trim()),
         data.address.trim(),
         data.district_id,
         data.notes?.trim(),
@@ -52,6 +54,12 @@ async function createPerson(
     );
 
     await connection.commit();
+
+    // Touch data version for the class this person was added to
+    const versionKey = type === 'student'
+      ? dataVersionsService.classStudentsKey(data.class_id)
+      : dataVersionsService.classTeachersKey(data.class_id);
+    dataVersionsService.touch(versionKey).catch(() => {});
   } catch (error) {
     await connection.rollback();
     throw error;
@@ -67,10 +75,11 @@ async function updatePerson(personId: number, person: UpdatePersonDto) {
     const firstQueryResult = await connection.query<ResultSetHeader>(
       `
         update persons 
-        set person_name=?, address=?, district_id=?, notes=? 
+        set person_name=?, normalized_person_name=?, address=?, district_id=?, notes=? 
         where person_id=? and person_id in (select person_id from person_class where type='student' and person_id=?);`,
       [
         person.name.trim(),
+        arabic.sanitize(person.name.trim()),
         person.address.trim(),
         person.district_id,
         person.notes?.trim(),
@@ -119,6 +128,24 @@ async function updatePerson(personId: number, person: UpdatePersonDto) {
     }
 
     await connection.commit();
+
+    // Touch data versions for all classes the person belongs to
+    const allClasses = await executeQuery<classIds[]>(
+      'SELECT class_id, type FROM person_class WHERE person_id = ?',
+      [personId],
+    );
+    const touchKeys: string[] = [];
+    for (const c of allClasses) {
+      if (c['type'] === 'student') {
+        touchKeys.push(dataVersionsService.classStudentsKey(c.class_id));
+      } else if (c['type'] === 'teacher') {
+        touchKeys.push(dataVersionsService.classTeachersKey(c.class_id));
+      }
+    }
+    if (touchKeys.length > 0) {
+      dataVersionsService.touch(...touchKeys).catch(() => {});
+    }
+
     return firstQueryResult[0].affectedRows;
   } catch (error) {
     await connection.rollback();
@@ -136,18 +163,20 @@ async function getPersonById(personId: number) {
       address, 
       photo_link, 
       notes, 
-      district_name 
+      district_name,
       group_concat(phone_numbers.phone_number separator ', ') as phone_numbers
     from persons 
-    inner join districts using(district_id) 
-    inner join phone_numbers using(person_id)
-    where person_id = ?`,
+    left join districts using(district_id) 
+    left join phone_numbers using(person_id)
+    where person_id = ?
+    group by person_id`,
     [personId],
   );
   return results;
 }
 
 async function searchByName(name: string, type: 'student' | 'teacher', classIds: number[]) {
+  if (classIds.length === 0) return [];
   const searchTerm = '%' + arabic.sanitize(name).replaceAll(' ', '%') + '%';
   const results = await executeQuery(
     `select distinct 
@@ -160,6 +189,30 @@ async function searchByName(name: string, type: 'student' | 'teacher', classIds:
     group by person_id
     `,
     [type, ...classIds, searchTerm]
+  );
+  return results;
+}
+
+async function updatePersonPhoto(personId: number, photoLink: string) {
+  const result = await executeQuery<ResultSetHeader>(
+    'update persons set photo_link = ? where person_id = ?',
+    [photoLink, personId],
+  );
+  return result;
+}
+
+async function getPersonClasses(personId: number) {
+  const results = await executeQuery(
+    `select 
+      person_class.class_id,
+      class_name,
+      school_name,
+      person_class.type
+    from person_class
+    inner join classes using(class_id)
+    inner join schools using(school_id)
+    where person_id = ?`,
+    [personId],
   );
   return results;
 }
@@ -186,6 +239,13 @@ async function unassignPerson(personId: number, classId: number, type: 'student'
     }
     await connection.commit();
     deletePersonIfNotInAnyClass(personId);
+
+    // Touch data version for the class
+    const versionKey = type === 'student'
+      ? dataVersionsService.classStudentsKey(classId)
+      : dataVersionsService.classTeachersKey(classId);
+    dataVersionsService.touch(versionKey).catch(() => {});
+
     return result.affectedRows;
   } catch (error) {
     await connection.rollback();
@@ -218,6 +278,8 @@ export default {
   getPersonById,
   searchByName,
   updatePerson,
+  updatePersonPhoto,
   getJoinedClasses,
+  getPersonClasses,
   unassignPerson,
 };

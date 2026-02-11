@@ -1,5 +1,6 @@
 import { CreateDistrictDto } from '../schemas/districts.schemas';
 import { executeQuery } from './database.service';
+import dataVersionsService from './data-versions.service';
 
 async function createDistrict(data: CreateDistrictDto) {
   await executeQuery(
@@ -9,6 +10,7 @@ async function createDistrict(data: CreateDistrictDto) {
   `,
     [data.name],
   );
+  dataVersionsService.touchDistricts().catch(() => {});
   return;
 }
 

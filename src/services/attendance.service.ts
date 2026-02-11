@@ -1,5 +1,6 @@
 import { RowDataPacket } from 'mysql2/promise';
 import { getConnection, executeQuery } from './database.service';
+import dataVersionsService from './data-versions.service';
 
 async function getAttendance(
   eventOccurrenceId: number,
@@ -38,12 +39,39 @@ async function getAttendance(
   };
 }
 
+async function isLatestOccurrence(eventOccurrenceId: number): Promise<boolean> {
+  const rows = await executeQuery<RowDataPacket[]>(
+    `
+    select eo_latest.event_occurence_id as latest_id
+    from event_occurence eo
+    inner join (
+      select event_id, max(occurence_date) as max_date
+      from event_occurence
+      group by event_id
+    ) eo_max on eo.event_id = eo_max.event_id and eo.occurence_date = eo_max.max_date
+    inner join event_occurence eo_latest
+      on eo_latest.event_id = eo_max.event_id and eo_latest.occurence_date = eo_max.max_date
+    where eo.event_occurence_id = ?
+    limit 1
+    `,
+    [eventOccurrenceId],
+  );
+
+  if (rows.length === 0 || !rows[0]) return false;
+  return rows[0]['latest_id'] === eventOccurrenceId;
+}
+
 async function patchAttendance(
   attended: number[] | undefined,
   absent: number[] | undefined,
   eventOccurrenceId: number,
   type: 'student' | 'teacher',
 ) {
+  const latest = await isLatestOccurrence(eventOccurrenceId);
+  if (!latest) {
+    throw new Error('EDIT_NOT_LATEST');
+  }
+
   const connection = await getConnection();
   await connection.beginTransaction();
   let classId = 0;
@@ -57,7 +85,7 @@ async function patchAttendance(
     classId = classes[0]['class_id'];
   }
   if (attended) {
-    attended.forEach(async personId => {
+    for (const personId of attended) {
       await connection.execute(
         `
         insert ignore into 
@@ -68,20 +96,23 @@ async function patchAttendance(
         `,
         [personId, eventOccurrenceId, personId, classId, type],
       );
-    });
+    }
   }
   if (absent) {
-    absent.forEach(async personId => {
+    for (const personId of absent) {
       await connection.execute(
         `
         delete from attendance where person_id=? and event_occurence_id=?;
         `,
         [personId, eventOccurrenceId],
       );
-    });
+    }
   }
   await connection.commit();
   connection.release();
+
+  // Touch data version for this occurrence's attendance (type-specific)
+  dataVersionsService.touchOccurrenceAttendance(eventOccurrenceId, type).catch(() => {});
 }
 
-export default { getAttendance, patchAttendance };
+export default { getAttendance, isLatestOccurrence, patchAttendance };

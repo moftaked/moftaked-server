@@ -26,7 +26,7 @@ export function isInClass(
   return (req: Request, res: Response, next: NextFunction) => {
     const user: { sub: number; username: string } = res.locals['user'];
     const classId =
-      whereIsClassId === 'body' ? req.body.classId : req.params['classId'];
+      whereIsClassId === 'body' ? req.body.class_id : req.params['classId'];
     if (!classId) return next(createHttpError(StatusCodes.BAD_REQUEST, 'Class ID is required'));
     const authorized = authService.isInAnyClass(
       user.sub,

@@ -17,6 +17,7 @@ import {
   searchByName,
   updatePerson,
   uploadPhoto,
+  uploadPersonPhoto,
 } from '../controllers/persons.controller';
 import { upload } from '../middleware/image-upload.middleware';
 
@@ -62,6 +63,25 @@ personsRouter.get(
   getPersonById('teacher'),
 );
 
+// Upload photo for a specific student
+personsRouter.post(
+  '/students/:studentId/photo',
+  isInPersonClass('studentId', 'student', [
+    Roles.teacher,
+    Roles.leader,
+    Roles.manager,
+  ]),
+  upload.single('photo'),
+  uploadPersonPhoto('student'),
+);
+
+// Upload photo for a specific teacher
+personsRouter.post(
+  '/teachers/:teacherId/photo',
+  isInPersonClass('teacherId', 'teacher', [Roles.leader, Roles.manager]),
+  upload.single('photo'),
+  uploadPersonPhoto('teacher'),
+);
 
 personsRouter.put(
   '/students/:studentId',

@@ -5,7 +5,9 @@ import classesRouter from './routes/classes.route';
 import { districtsRouter } from './routes/districts.route';
 import eventsRouter from './routes/events.route';
 import { personsRouter } from './routes/persons.route';
+import reportsRouter from './routes/reports.route';
 import rolesRouter from './routes/roles.route';
+import syncRouter from './routes/sync.route';
 
 const routes = [
   {
@@ -37,8 +39,16 @@ const routes = [
     router: personsRouter
   },
   {
+    path: '/reports',
+    router: reportsRouter,
+  },
+  {
     path: '/roles',
     router: rolesRouter,
+  },
+  {
+    path: '/sync',
+    router: syncRouter,
   },
 ];
 

@@ -8,11 +8,13 @@ const storage = multer.diskStorage({
   },
 });
 
+const ALLOWED_MIMETYPES = ['image/webp', 'image/jpeg', 'image/png'];
+
 const upload = multer({
   storage,
   fileFilter: (_req, file, cb) => {
-    if (file.mimetype !== 'image/webp') {
-      return cb(new Error('Only webp image files are allowed!'));
+    if (!ALLOWED_MIMETYPES.includes(file.mimetype)) {
+      return cb(new Error('Only webp, jpeg, and png image files are allowed!'));
     }
     cb(null, true);
   },
