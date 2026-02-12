@@ -12,6 +12,7 @@ const dbConfig = {
 };
 
 let adminPool: mysql.Pool | undefined;
+let helperPool: mysql.Pool | undefined;
 let testDbName: string | undefined;
 
 /**
@@ -87,7 +88,7 @@ const ALL_TABLES = [
  * Call this in `beforeEach()` of each integration test suite.
  */
 export async function truncateAllTables(): Promise<void> {
-  if (!testDbName) {
+  if (!helperPool || !testDbName) {
     throw new Error('truncateAllTables called before createTestDatabase');
   }
 
@@ -111,8 +112,7 @@ export async function truncateAllTables(): Promise<void> {
     'SET FOREIGN_KEY_CHECKS=1;',
   ].join('\n');
 
-  await pool.query(statements);
-  await pool.end();
+  await helperPool.query(statements);
 }
 
 /**
@@ -123,6 +123,12 @@ export async function truncateAllTables(): Promise<void> {
 export async function dropTestDatabase(): Promise<void> {
   // Close the application's database.service pool first so Jest can exit cleanly
   await end();
+
+  // Close the helper pool before dropping the database
+  if (helperPool) {
+    await helperPool.end();
+    helperPool = undefined;
+  }
 
   if (adminPool && testDbName) {
     try {
@@ -247,7 +253,7 @@ export async function seedTestData(data: SeedData): Promise<{
   personClassIds: number[];
   phoneNumberIds: number[];
 }> {
-  if (!testDbName) {
+  if (!helperPool || !testDbName) {
     throw new Error('seedTestData called before createTestDatabase');
   }
 
@@ -274,7 +280,7 @@ export async function seedTestData(data: SeedData): Promise<{
     phoneNumberIds: [] as number[],
   };
 
-  try {
+  {
     // Schools
     for (const s of data.schools ?? []) {
       const [res] = await pool.execute<mysql.ResultSetHeader>(
@@ -381,8 +387,6 @@ export async function seedTestData(data: SeedData): Promise<{
       r.role_id = res.insertId;
       result.roleIds.push(res.insertId);
     }
-  } finally {
-    await pool.end();
   }
 
   return result;
