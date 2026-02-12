@@ -36,3 +36,10 @@ export async function getConnection() {
   const connection = await pool.getConnection();
   return connection;
 }
+
+export async function end() {
+  if (pool) {
+    await pool.end();
+    pool = undefined;
+  }
+}
