@@ -374,6 +374,7 @@ export async function getSchoolClassComparison(
       );
     }
 
+    // todo: move auth to route with middleware
     const isManager = await reportsService.isSchoolManager(
       res.locals.user.sub,
       schoolId,
@@ -401,15 +402,13 @@ export async function getSchoolClassComparison(
 // ---------------------------------------------------------------------------
 
 export async function getUserAvailableDates(
-  req: Request<Record<string, never>, any, any, { limit?: string }>,
+  _req: Request,
   res: Response<unknown, authenticatedLocals>,
   next: NextFunction,
 ) {
   try {
-    const limit = parseInt(req.query.limit || "30");
     const data = await reportsService.getUserAvailableDates(
       res.locals.user.sub,
-      limit,
     );
     res.status(StatusCodes.OK).json({ success: true, data });
   } catch (err) {

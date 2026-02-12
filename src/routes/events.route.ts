@@ -9,17 +9,23 @@ import {
   getEvents,
   getEventOccurrences,
   createEventOccurrence,
+  createSchoolOccurrences,
   deleteLastEventOccurrence,
   createEvent,
   deleteEvent,
 } from '../controllers/events.controller';
-import { EventOccurrenceSchema, EventSchema } from '../schemas/events.schemas';
+import { EventOccurrenceSchema, EventSchema, SchoolOccurrenceSchema } from '../schemas/events.schemas';
 const eventsRouter = express.Router();
 
 eventsRouter.use(isAuthenticated());
 
 eventsRouter.get('/classes/:classId', getEvents);
 eventsRouter.get('/:eventId/occurrences', getEventOccurrences);
+eventsRouter.post(
+  '/occurrences/school',
+  validateData(SchoolOccurrenceSchema),
+  createSchoolOccurrences,
+);
 eventsRouter.post(
   '/occurrences',
   validateData(EventOccurrenceSchema),

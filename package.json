@@ -27,6 +27,7 @@
     "multer": "^2.0.2",
     "mysql2": "^3.14.1",
     "result2": "^1.0.0",
+    "sharp": "^0.34.5",
     "zod": "^3.25.49"
   },
   "devDependencies": {
@@ -35,13 +36,14 @@
     "@babel/preset-typescript": "^7.27.1",
     "@jest/globals": "^30.0.5",
     "@types/bcrypt": "^5.0.2",
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/http-errors": "^2.0.5",
     "@types/jest": "^30.0.0",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/multer": "^2.0.0",
     "@types/node": "^22.7.5",
-    "@types/cors": "^2.8.19",
+    "@types/sharp": "^0.31.1",
     "babel-jest": "^30.0.5",
     "husky": "^8.0.0",
     "jest": "^30.0.5",

@@ -1,6 +1,6 @@
 import { RowDataPacket } from 'mysql2';
 import { Roles } from '../enums/roles.enum';
-import { executeQuery } from './database.service';
+import { executeQuery, getConnection } from './database.service';
 import { eventTypes } from '../enums/eventTypes.enum';
 import dataVersionsService from './data-versions.service';
 
@@ -40,6 +40,24 @@ async function createEvent(
     [classId, eventName, type],
   );
   dataVersionsService.touchClassEvents(classId).catch(() => {});
+}
+
+async function updateEvent(
+  eventId: number,
+  eventName: string,
+  type: eventTypes,
+) {
+  const rows = await executeQuery<RowDataPacket[]>(
+    'SELECT class_id FROM events WHERE event_id = ?',
+    [eventId],
+  );
+  await executeQuery(
+    'UPDATE events SET event_name = ?, type = ? WHERE event_id = ?',
+    [eventName, type, eventId],
+  );
+  if (rows[0]) {
+    dataVersionsService.touchClassEvents(rows[0]['class_id']).catch(() => {});
+  }
 }
 
 async function deleteEvent(eventId: number) {
@@ -92,11 +110,70 @@ async function getEventOccurrences(eventId: number) {
   return occurrences;
 }
 
+/**
+ * Create occurrences for today for ALL events across ALL classes in a school
+ * that the given user has access to.
+ *
+ * Uses INSERT IGNORE so duplicate (event_id, occurence_date) pairs are silently
+ * skipped — safe to call multiple times on the same day.
+ *
+ * Returns the list of event IDs that were processed.
+ */
+async function createSchoolOccurrences(
+  userId: number,
+  schoolId: number,
+): Promise<number[]> {
+  // 1. Find all events in classes the user has roles in for this school
+  const events = await executeQuery<RowDataPacket[]>(
+    `SELECT DISTINCT e.event_id
+     FROM events e
+     INNER JOIN classes c ON e.class_id = c.class_id
+     INNER JOIN roles r ON r.class_id = c.class_id
+     WHERE r.account_id = ?
+       AND c.school_id = ?`,
+    [userId, schoolId],
+  );
+
+  if (events.length === 0) return [];
+
+  const eventIds: number[] = events.map((e) => e['event_id'] as number);
+  const today = new Date().toISOString().slice(0, 10); // yyyy-mm-dd
+
+  // 2. Bulk-insert occurrences (IGNORE skips existing ones)
+  const placeholders = eventIds.map(() => '(?, ?)').join(', ');
+  const values = eventIds.flatMap((id) => [id, today]);
+
+  const connection = await getConnection();
+  try {
+    await connection.beginTransaction();
+    await connection.execute(
+      `INSERT IGNORE INTO event_occurence (event_id, occurence_date) VALUES ${placeholders}`,
+      values,
+    );
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+
+  // 3. Touch data-version timestamps for every affected event
+  const versionKeys = eventIds.map((id) =>
+    dataVersionsService.eventOccurrencesKey(id),
+  );
+  dataVersionsService.touch(...versionKeys).catch(() => {});
+
+  return eventIds;
+}
+
 export default {
   getEvents,
   getEventOccurrences,
   createEventOccurrence,
   deleteLastEventOccurrence,
   createEvent,
+  updateEvent,
   deleteEvent,
+  createSchoolOccurrences,
 };

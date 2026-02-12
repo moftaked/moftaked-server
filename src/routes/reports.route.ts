@@ -22,6 +22,7 @@ reportsRouter.use(isAuthenticated());
 // ---------------------------------------------------------------------------
 // Access check – returns what reports the user can see
 // ---------------------------------------------------------------------------
+// todo: refactor so this route is no longer needed
 reportsRouter.get("/access", getReportsAccess);
 
 reportsRouter.get("/dates", getUserAvailableDates);

@@ -2,8 +2,9 @@ import { NextFunction, Request, Response } from 'express';
 import rolesService from '../services/roles.service';
 import eventsService from '../services/events.service';
 import { StatusCodes } from 'http-status-codes';
-import { EventDto, EventOccurrenceDto } from '../schemas/events.schemas';
+import { EventDto, EventOccurrenceDto, SchoolOccurrenceDto } from '../schemas/events.schemas';
 import createHttpError from 'http-errors';
+import { Roles } from '../enums/roles.enum';
 
 export async function getEvents(req: Request, res: Response, next: NextFunction) {
   let classId: number = parseInt(req.params['classId']!);
@@ -61,4 +62,18 @@ export async function getEventOccurrences(req: Request, res: Response, next: Nex
   }
   const occurrences = await eventsService.getEventOccurrences(eventId);
   res.status(StatusCodes.OK).json({ success: true, data: occurrences });
+}
+
+export async function createSchoolOccurrences(req: Request, res: Response, next: NextFunction) {
+  const body: SchoolOccurrenceDto = req.body;
+  const userId: number = res.locals['user']['sub'];
+
+  // Verify the user is at least a leader in this school
+  const role = await rolesService.getHighestRole(userId, undefined, body.schoolId);
+  if (role !== Roles.leader && role !== Roles.manager) {
+    return next(createHttpError(StatusCodes.FORBIDDEN, 'You must be a leader or manager to create a new day for the school'));
+  }
+
+  const eventIds = await eventsService.createSchoolOccurrences(userId, body.schoolId);
+  res.status(StatusCodes.CREATED).json({ success: true, eventIds });
 }

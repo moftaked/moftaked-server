@@ -182,10 +182,11 @@ async function searchByName(name: string, type: 'student' | 'teacher', classIds:
     `select distinct 
       person_id, 
       person_name,
+      photo_link,
       group_concat(person_class.class_id separator ', ') as classIds 
     from persons 
     inner join person_class using(person_id)
-    where type = ? and class_id in (${classIds.map(() => '?').join(',')}) and normalized_person_name like ?
+    where type = ? and class_id in (${classIds.map(() => '?').join(',')}) and COALESCE(normalized_person_name, person_name) like ?
     group by person_id
     `,
     [type, ...classIds, searchTerm]

@@ -7,6 +7,8 @@ import classesService from '../services/classes.service';
 import { authenticatedLocals } from '../middleware/authorization.middleware';
 import path from 'path';
 import fs from 'fs';
+import { processAndSaveImage, deleteImageVariants } from '../middleware/image-upload.middleware';
+import dataVersionsService from '../services/data-versions.service';
 
 export function createPerson(type: 'student' | 'teacher') {
   return async (req: Request, res: Response) => {
@@ -109,12 +111,12 @@ export async function uploadPhoto(req: Request, res: Response) {
       return;
     }
 
-    // The file has been saved by multer to uploads/images directory
-    // Return the file path and other relevant information
+    // Process the image buffer into multiple sizes
+    const baseFilename = await processAndSaveImage(req.file.buffer, req.file.fieldname);
+
     const photoData = {
-      filename: req.file.filename,
+      filename: baseFilename,
       originalName: req.file.originalname,
-      path: req.file.path,
       size: req.file.size,
       mimetype: req.file.mimetype,
     };
@@ -158,26 +160,43 @@ export function uploadPersonPhoto(type: 'student' | 'teacher') {
       const person = await personsService.getPersonById(personId) as any[];
       const oldPhotoLink = person?.[0]?.photo_link;
 
-      // Update the person's photo_link in the database
-      const filename = req.file.filename;
-      await personsService.updatePersonPhoto(personId, filename);
+      // Process the image buffer into multiple sizes (sm, md, lg)
+      const baseFilename = await processAndSaveImage(req.file.buffer, req.file.fieldname);
 
-      // Delete old photo file if it exists
+      // Update the person's photo_link in the database (store base filename)
+      await personsService.updatePersonPhoto(personId, baseFilename);
+
+      // Delete old photo files if they exist
       if (oldPhotoLink) {
-        const oldPath = path.join('uploads', 'images', oldPhotoLink);
-        fs.unlink(oldPath, () => {}); // fire-and-forget
+        // Handle both legacy single-file and new multi-size formats
+        const oldBase = oldPhotoLink.replace(/\.webp$/, '');
+        deleteImageVariants(oldBase);
+        // Also try to delete legacy single file
+        const legacyPath = path.join('uploads', 'images', oldPhotoLink);
+        fs.unlink(legacyPath, () => {}); // fire-and-forget
+      }
+
+      // Touch data versions for all classes the person belongs to
+      // so the class table cache is invalidated and shows the new photo
+      const allClasses = await personsService.getPersonClasses(personId) as any[];
+      const touchKeys: string[] = [];
+      for (const c of allClasses) {
+        if (c.type === 'student') {
+          touchKeys.push(dataVersionsService.classStudentsKey(c.class_id));
+        } else if (c.type === 'teacher') {
+          touchKeys.push(dataVersionsService.classTeachersKey(c.class_id));
+        }
+      }
+      if (touchKeys.length > 0) {
+        dataVersionsService.touch(...touchKeys).catch(() => {});
       }
 
       res.status(StatusCodes.OK).json({
         success: true,
         message: 'Photo uploaded and linked successfully',
-        data: { filename },
+        data: { filename: baseFilename },
       });
     } catch (error) {
-      // Clean up uploaded file on error
-      if (req.file) {
-        fs.unlink(req.file.path, () => {});
-      }
       res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: 'Error uploading photo',

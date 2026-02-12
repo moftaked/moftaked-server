@@ -113,17 +113,17 @@ async function getLeaderEventReport(
   const results = await executeQuery<RowDataPacket[]>(
     `select
       date_format(occurence_date, "%d/%c") as occurence_date,
-      count(distinct attendance.person_id) as attended, 
-      count(distinct person_class.person_id) as total 
-    from events 
-    left join event_occurence on 
+      count(distinct attendance.person_id) as attended,
+      count(distinct person_class.person_id) as total
+    from events
+    left join event_occurence on
       events.event_id = ? and
-      events.event_id = event_occurence.event_id and 
+      events.event_id = event_occurence.event_id and
       occurence_date <= ?
-    left join person_class on 
+    left join person_class on
       events.class_id = person_class.class_id and person_class.type = ?
-    left join attendance on 
-      event_occurence.event_occurence_id=attendance.event_occurence_id and 
+    left join attendance on
+      event_occurence.event_occurence_id=attendance.event_occurence_id and
       person_class.person_id=attendance.person_id
     group by occurence_date
     having occurence_date is not null
@@ -147,17 +147,17 @@ async function getTeacherEventReport(
   const results = await executeQuery<RowDataPacket[]>(
     `select
       date_format(occurence_date, "%d/%c") as occurence_date,
-      count(distinct attendance.person_id) as attended, 
-      count(distinct person_class.person_id) as total 
-    from events 
-    left join event_occurence on 
-      events.event_id = event_occurence.event_id and 
-      occurence_date<=? and 
+      count(distinct attendance.person_id) as attended,
+      count(distinct person_class.person_id) as total
+    from events
+    left join event_occurence on
+      events.event_id = event_occurence.event_id and
+      occurence_date<=? and
       events.event_id = ?
-    left join person_class on 
+    left join person_class on
       events.class_id = person_class.class_id and person_class.type = 'student'
-    left join attendance on 
-      event_occurence.event_occurence_id=attendance.event_occurence_id and 
+    left join attendance on
+      event_occurence.event_occurence_id=attendance.event_occurence_id and
       person_class.person_id=attendance.person_id
     group by occurence_date
     having occurence_date is not null
@@ -225,7 +225,7 @@ async function aggregateOverAllStats(stats: rawStat[]) {
 
 async function getSchoolsManagedByUser(account_id: number) {
   const results = await executeQuery<school[]>(
-    `select distinct school_id, school_name 
+    `select distinct school_id, school_name
     from roles
     inner join schools using(school_id)
     where account_id=? and role='manager'`,
@@ -239,22 +239,22 @@ async function getSchoolsManagedByUser(account_id: number) {
 async function getSchoolOverAllStats(schoolId: number, date: string) {
   const results = await executeQuery<rawStat[]>(
     `
-    select 
-      events.event_name, 
-      person_class.type, 
-      count(attendance.person_id) as attended, 
-      count(person_class.person_id) as total 
-    from events 
+    select
+      events.event_name,
+      person_class.type,
+      count(attendance.person_id) as attended,
+      count(person_class.person_id) as total
+    from events
     inner join classes on events.class_id = classes.class_id and classes.school_id = ?
-    left join event_occurence on 
-      events.event_id = event_occurence.event_id and 
+    left join event_occurence on
+      events.event_id = event_occurence.event_id and
       occurence_date=?
-    left join person_class on 
-      events.class_id = person_class.class_id and 
-      (events.type='all' or events.type=person_class.type) 
-    left join attendance on 
-      event_occurence.event_occurence_id=attendance.event_occurence_id and 
-      person_class.person_id=attendance.person_id 
+    left join person_class on
+      events.class_id = person_class.class_id and
+      (events.type='all' or events.type=person_class.type)
+    left join attendance on
+      event_occurence.event_occurence_id=attendance.event_occurence_id and
+      person_class.person_id=attendance.person_id
     group by event_name, person_class.type
     having person_class.type is not null;
     `,
@@ -296,7 +296,7 @@ async function getClassAttendanceSummary(classId: number, date: string) {
       pc.person_id = a.person_id
     GROUP BY e.event_id, e.event_name, e.type, pc.type, eo.event_occurence_id, eo.occurence_date
     HAVING pc.type IS NOT NULL
-    ORDER BY e.event_name, pc.type;
+    ORDER BY e.event_id ASC, pc.type;
     `,
     [classId, date],
   );
@@ -390,9 +390,9 @@ async function getEventAttendanceTrends(
       pc.person_id = a.person_id
     GROUP BY eo.event_occurence_id, eo.occurence_date
     ORDER BY eo.occurence_date DESC
-    LIMIT ?;
+    LIMIT ${Number(limit)};
     `,
-    [eventId, personType, limit],
+    [eventId, personType],
   );
 
   // Get event info
@@ -589,9 +589,9 @@ async function getPersonAttendanceHistory(
         a.person_id = ?
       WHERE eo.event_id = ?
       ORDER BY eo.occurence_date DESC
-      LIMIT ?;
+      LIMIT ${Number(limit)};
       `,
-      [personId, event['event_id'], limit],
+      [personId, event['event_id']],
     );
 
     const totalOccurrences = history.length;
@@ -737,6 +737,7 @@ async function getChronicAbsentees(
  * for a given date. Useful for managers to compare performance.
  */
 async function getSchoolClassComparison(schoolId: number, date: string) {
+  // todo: rename all this shit from comparison to summary
   const results = await executeQuery<RowDataPacket[]>(
     `
     SELECT
@@ -761,7 +762,7 @@ async function getSchoolClassComparison(schoolId: number, date: string) {
     WHERE c.school_id = ?
     GROUP BY c.class_id, c.class_name, e.event_id, e.event_name, pc.type
     HAVING pc.type IS NOT NULL
-    ORDER BY c.class_name, e.event_name, pc.type;
+    ORDER BY e.event_id ASC, c.class_name, pc.type;
     `,
     [date, schoolId],
   );
@@ -869,7 +870,7 @@ async function isSchoolManager(accountId: number, schoolId: number) {
  * authenticated user has a role in. Used by the top-level /reports page
  * date picker so the user can only pick dates that actually have data.
  */
-async function getUserAvailableDates(accountId: number, limit: number = 30) {
+async function getUserAvailableDates(accountId: number) {
   const results = await executeQuery<RowDataPacket[]>(
     `
     SELECT
@@ -880,7 +881,6 @@ async function getUserAvailableDates(accountId: number, limit: number = 30) {
     INNER JOIN roles r ON e.class_id = r.class_id AND r.account_id = ?
     GROUP BY eo.occurence_date
     ORDER BY eo.occurence_date DESC
-    LIMIT ${Number(limit)};
     `,
     [accountId],
   );

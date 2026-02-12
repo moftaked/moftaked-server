@@ -14,3 +14,9 @@ export const EventSchema = z.object({
 });
 
 export type EventDto = z.infer<typeof EventSchema>;
+
+export const SchoolOccurrenceSchema = z.object({
+  schoolId: z.number().int().positive(),
+});
+
+export type SchoolOccurrenceDto = z.infer<typeof SchoolOccurrenceSchema>;
