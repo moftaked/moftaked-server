@@ -68,7 +68,7 @@ async function deleteEvent(eventId: number) {
   );
   await executeQuery(
     `
-    DELETE FROM EVENTS WHERE event_id = ?
+    DELETE FROM events WHERE event_id = ?
     `,
     [eventId],
   );
