@@ -27,7 +27,13 @@ describe('Attendance Controller', () => {
           } as PatchAttendanceDto,
           params: {
             eventOccurrenceId: '12'
-          }
+          },
+          ip: '127.0.0.1',
+          socket: { remoteAddress: '127.0.0.1' },
+          get: jest.fn().mockReturnValue('test-agent'),
+          res: {
+            locals: { user: { sub: 1 } },
+          },
         } as any as Request;
         const res = {
           json: jest.fn(),
@@ -50,7 +56,10 @@ describe('Attendance Controller', () => {
         } as PatchAttendanceDto,
         params: {
           eventOccurrenceId: 'invalid'
-        }
+        },
+        ip: '127.0.0.1',
+        socket: { remoteAddress: '127.0.0.1' },
+        get: jest.fn().mockReturnValue('test-agent'),
       } as any as Request;
       const res = {
         json: jest.fn(),

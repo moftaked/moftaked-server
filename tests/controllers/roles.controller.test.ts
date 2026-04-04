@@ -1,17 +1,21 @@
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 
 jest.mock('../../src/services/roles.service');
+jest.mock('../../src/services/auth.service');
 
 import { addRole, getRoles } from '../../src/controllers/roles.controller';
 import rolesService from '../../src/services/roles.service';
+import authService from '../../src/services/auth.service';
 import { Roles } from '../../src/enums/roles.enum';
 
 const mockedRolesService = rolesService as jest.Mocked<typeof rolesService>;
+const mockedAuthService = authService as jest.Mocked<typeof authService>;
 
 function createMockRes() {
   return {
     status: jest.fn().mockReturnThis(),
     json: jest.fn().mockReturnThis(),
+    locals: { user: { sub: 1 } },
   } as any;
 }
 
@@ -30,6 +34,8 @@ describe('Roles Controller', () => {
     it('should call rolesService.addRole with correct params from body', async () => {
       const mockResult = { insertId: 42 };
       mockedRolesService.addRole.mockResolvedValueOnce(mockResult as any);
+      mockedRolesService.getClassInfo.mockResolvedValueOnce([{ school_id: 1 }] as any);
+      mockedAuthService.isManagerOfSchool.mockResolvedValueOnce(true);
 
       const req = {
         body: {
@@ -39,8 +45,9 @@ describe('Roles Controller', () => {
         },
       } as any;
       const res = createMockRes();
+      const next = jest.fn();
 
-      await addRole(req, res);
+      await addRole(req, res, next);
 
       expect(mockedRolesService.addRole).toHaveBeenCalledWith('testuser', 10, Roles.teacher);
       expect(res.json).toHaveBeenCalledWith(mockResult);
@@ -49,6 +56,8 @@ describe('Roles Controller', () => {
     it('should call rolesService.addRole with numeric user ID', async () => {
       const mockResult = { insertId: 43 };
       mockedRolesService.addRole.mockResolvedValueOnce(mockResult as any);
+      mockedRolesService.getClassInfo.mockResolvedValueOnce([{ school_id: 1 }] as any);
+      mockedAuthService.isManagerOfSchool.mockResolvedValueOnce(true);
 
       const req = {
         body: {
@@ -58,8 +67,9 @@ describe('Roles Controller', () => {
         },
       } as any;
       const res = createMockRes();
+      const next = jest.fn();
 
-      await addRole(req, res);
+      await addRole(req, res, next);
 
       expect(mockedRolesService.addRole).toHaveBeenCalledWith(100, 20, Roles.leader);
       expect(res.json).toHaveBeenCalledWith(mockResult);
@@ -68,6 +78,8 @@ describe('Roles Controller', () => {
     it('should return the service result as JSON', async () => {
       const mockResult = { affectedRows: 1 };
       mockedRolesService.addRole.mockResolvedValueOnce(mockResult as any);
+      mockedRolesService.getClassInfo.mockResolvedValueOnce([{ school_id: 1 }] as any);
+      mockedAuthService.isManagerOfSchool.mockResolvedValueOnce(true);
 
       const req = {
         body: {
@@ -77,8 +89,9 @@ describe('Roles Controller', () => {
         },
       } as any;
       const res = createMockRes();
+      const next = jest.fn();
 
-      await addRole(req, res);
+      await addRole(req, res, next);
 
       expect(res.json).toHaveBeenCalledWith(mockResult);
     });
@@ -89,10 +102,11 @@ describe('Roles Controller', () => {
   describe('getRoles()', () => {
     it('should call rolesService.getRoles with parsed userId and return result', async () => {
       const mockRoles = [
-        { role_id: 1, role: 'teacher', class_id: 10 },
-        { role_id: 2, role: 'leader', class_id: 20 },
+        { role_id: 1, role: 'teacher', class_id: 10, school_id: 1 },
+        { role_id: 2, role: 'leader', class_id: 20, school_id: 1 },
       ];
       mockedRolesService.getRoles.mockResolvedValueOnce(mockRoles as any);
+      mockedRolesService.getManagedSchools.mockResolvedValueOnce([{ school_id: 1 }] as any);
 
       const req = {
         params: { userId: '100' },
@@ -132,6 +146,7 @@ describe('Roles Controller', () => {
 
     it('should handle userId of 0 as valid (not NaN)', async () => {
       mockedRolesService.getRoles.mockResolvedValueOnce([] as any);
+      mockedRolesService.getManagedSchools.mockResolvedValueOnce([{ school_id: 1 }] as any);
 
       const req = {
         params: { userId: '0' },
@@ -146,6 +161,7 @@ describe('Roles Controller', () => {
 
     it('should not call res.status when userId is valid', async () => {
       mockedRolesService.getRoles.mockResolvedValueOnce([] as any);
+      mockedRolesService.getManagedSchools.mockResolvedValueOnce([{ school_id: 1 }] as any);
 
       const req = {
         params: { userId: '42' },

@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import accountsService from '../services/accounts.service';
 import { CreateAccountDto } from '../schemas/accounts.schemas';
 import { executeQuery, getConnection } from '../services/database.service';
@@ -6,6 +6,10 @@ import { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import { StatusCodes } from 'http-status-codes';
 import dataVersionsService from '../services/data-versions.service';
 import rolesService from '../services/roles.service';
+import auditLogService, { AuditEventType } from '../services/audit-log.service';
+import { authenticatedLocals } from '../middleware/authorization.middleware';
+import authService from '../services/auth.service';
+import createHttpError from 'http-errors';
 
 export async function createAccount(req: Request, res: Response) {
   const newUser: CreateAccountDto = req.body;
@@ -14,6 +18,15 @@ export async function createAccount(req: Request, res: Response) {
     newUser.real_name,
     newUser.password,
   );
+  const user = (req.res?.locals as authenticatedLocals)?.user;
+  const ipAddress = req.ip ?? req.socket.remoteAddress ?? null;
+  const userAgent = req.get('User-Agent') ?? null;
+  auditLogService.log(auditLogService.createLogEntry(AuditEventType.ACCOUNT_CREATED, {
+    userId: user?.sub,
+    details: { createdUsername: newUser.username, createdRealName: newUser.real_name },
+    ipAddress,
+    userAgent,
+  })).catch(() => {});
   res.json(result);
 }
 
@@ -68,8 +81,19 @@ export async function getAccounts(_req: Request, res: Response) {
   }
 }
 
-export async function getAllClasses(_req: Request, res: Response) {
+export async function getAllClasses(req: Request, res: Response) {
+  const user = (req.res?.locals as authenticatedLocals)?.user;
+  
   try {
+    const userManagedSchools = await rolesService.getManagedSchools(user.sub);
+    const schoolIds = userManagedSchools.map((r: any) => r.school_id);
+    
+    if (schoolIds.length === 0) {
+      res.status(StatusCodes.OK).json({ success: true, data: [] });
+      return;
+    }
+    
+    const placeholders = schoolIds.map(() => '?').join(',');
     const classes = await executeQuery<RowDataPacket[]>(
       `SELECT 
         c.class_id, 
@@ -78,7 +102,9 @@ export async function getAllClasses(_req: Request, res: Response) {
         s.school_name
       FROM classes c
       INNER JOIN schools s ON c.school_id = s.school_id
+      WHERE s.school_id IN (${placeholders})
       ORDER BY s.school_name, c.class_name`,
+      schoolIds,
     );
     res.status(StatusCodes.OK).json({ success: true, data: classes });
   } catch (error) {
@@ -89,8 +115,11 @@ export async function getAllClasses(_req: Request, res: Response) {
   }
 }
 
-export async function assignPersonToClass(req: Request, res: Response) {
+export async function assignPersonToClass(req: Request, res: Response, next: NextFunction) {
   const { person_id, class_id, type } = req.body;
+  const user = (req.res?.locals as authenticatedLocals)?.user;
+  const ipAddress = req.ip ?? req.socket.remoteAddress ?? null;
+  const userAgent = req.get('User-Agent') ?? null;
 
   if (!person_id || !class_id || !type) {
     res.status(StatusCodes.BAD_REQUEST).json({
@@ -108,11 +137,27 @@ export async function assignPersonToClass(req: Request, res: Response) {
     return;
   }
 
+  const [classInfo] = await executeQuery<RowDataPacket[]>(
+    'SELECT school_id FROM classes WHERE class_id = ?',
+    [class_id],
+  );
+  if (!classInfo) {
+    res.status(StatusCodes.NOT_FOUND).json({
+      success: false,
+      message: 'Class not found',
+    });
+    return;
+  }
+
+  const isManager = await authService.isManagerOfSchool(user.sub, classInfo['school_id']);
+  if (!isManager) {
+    return next(createHttpError(StatusCodes.FORBIDDEN, 'You are not authorized to manage this school'));
+  }
+
   const connection = await getConnection();
   try {
     await connection.beginTransaction();
 
-    // Check if assignment already exists
     const [existing] = await connection.query<RowDataPacket[]>(
       'SELECT person_class_id FROM person_class WHERE person_id = ? AND class_id = ? AND type = ?',
       [person_id, class_id, type],
@@ -134,11 +179,17 @@ export async function assignPersonToClass(req: Request, res: Response) {
 
     await connection.commit();
 
-    // Touch data version for the class
     const versionKey = type === 'student'
       ? dataVersionsService.classStudentsKey(class_id)
       : dataVersionsService.classTeachersKey(class_id);
     dataVersionsService.touch(versionKey).catch(() => {});
+
+    auditLogService.log(auditLogService.createLogEntry(AuditEventType.ROLE_ASSIGNED, {
+      userId: user?.sub,
+      details: { person_id, class_id, type },
+      ipAddress,
+      userAgent,
+    })).catch(() => {});
 
     res.status(StatusCodes.CREATED).json({
       success: true,
@@ -155,7 +206,7 @@ export async function assignPersonToClass(req: Request, res: Response) {
   }
 }
 
-export async function deleteRoleById(req: Request, res: Response) {
+export async function deleteRoleById(req: Request, res: Response, next: NextFunction) {
   const roleId = parseInt(req.params['roleId']!, 10);
   if (isNaN(roleId)) {
     res.status(StatusCodes.BAD_REQUEST).json({
@@ -163,6 +214,21 @@ export async function deleteRoleById(req: Request, res: Response) {
       message: 'Invalid role ID',
     });
     return;
+  }
+
+  const [roleInfo] = await rolesService.getRoleById(roleId);
+  if (!roleInfo) {
+    res.status(StatusCodes.NOT_FOUND).json({
+      success: false,
+      message: 'Role not found',
+    });
+    return;
+  }
+
+  const user = (req.res?.locals as authenticatedLocals)?.user;
+  const isManager = await authService.isManagerOfSchool(user.sub, roleInfo['school_id']);
+  if (!isManager) {
+    return next(createHttpError(StatusCodes.FORBIDDEN, 'You are not authorized to delete roles in this school'));
   }
 
   try {
@@ -179,8 +245,11 @@ export async function deleteRoleById(req: Request, res: Response) {
   }
 }
 
-export async function unassignPersonFromClass(req: Request, res: Response) {
+export async function unassignPersonFromClass(req: Request, res: Response, next: NextFunction) {
   const { person_id, class_id, type } = req.body;
+  const user = (req.res?.locals as authenticatedLocals)?.user;
+  const ipAddress = req.ip ?? req.socket.remoteAddress ?? null;
+  const userAgent = req.get('User-Agent') ?? null;
 
   if (!person_id || !class_id || !type) {
     res.status(StatusCodes.BAD_REQUEST).json({
@@ -196,6 +265,23 @@ export async function unassignPersonFromClass(req: Request, res: Response) {
       message: 'type must be "student" or "teacher"',
     });
     return;
+  }
+
+  const [classInfo] = await executeQuery<RowDataPacket[]>(
+    'SELECT school_id FROM classes WHERE class_id = ?',
+    [class_id],
+  );
+  if (!classInfo) {
+    res.status(StatusCodes.NOT_FOUND).json({
+      success: false,
+      message: 'Class not found',
+    });
+    return;
+  }
+
+  const isManager = await authService.isManagerOfSchool(user.sub, classInfo['school_id']);
+  if (!isManager) {
+    return next(createHttpError(StatusCodes.FORBIDDEN, 'You are not authorized to manage this school'));
   }
 
   const connection = await getConnection();
@@ -218,11 +304,17 @@ export async function unassignPersonFromClass(req: Request, res: Response) {
 
     await connection.commit();
 
-    // Touch data version for the class
     const versionKey = type === 'student'
       ? dataVersionsService.classStudentsKey(class_id)
       : dataVersionsService.classTeachersKey(class_id);
     dataVersionsService.touch(versionKey).catch(() => {});
+
+    auditLogService.log(auditLogService.createLogEntry(AuditEventType.ROLE_REMOVED, {
+      userId: user?.sub,
+      details: { person_id, class_id, type },
+      ipAddress,
+      userAgent,
+    })).catch(() => {});
 
     res.status(StatusCodes.OK).json({
       success: true,

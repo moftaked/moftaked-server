@@ -20,6 +20,12 @@ describe('Accounts Controller', () => {
           password: 'password123',
           real_name: 'Tony Stark',
         },
+        ip: '127.0.0.1',
+        socket: { remoteAddress: '127.0.0.1' },
+        get: jest.fn().mockReturnValue('test-agent'),
+        res: {
+          locals: { user: { sub: 1 } },
+        },
       } as any as Request;
       const res = {
         json: jest.fn(),

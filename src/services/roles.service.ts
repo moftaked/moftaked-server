@@ -89,4 +89,28 @@ async function deleteRole(roleId: number) {
   }
 }
 
-export default { addRole, deleteRole, getRoles, getHighestRole };
+async function getClassInfo(classId: number) {
+  const result = await executeQuery<RowDataPacket[]>(
+    'SELECT school_id FROM classes WHERE class_id = ?',
+    [classId],
+  );
+  return result;
+}
+
+async function getRoleById(roleId: number) {
+  const result = await executeQuery<RowDataPacket[]>(
+    'SELECT school_id, class_id, role, account_id FROM roles WHERE role_id = ?',
+    [roleId],
+  );
+  return result;
+}
+
+async function getManagedSchools(accountId: number) {
+  const result = await executeQuery<RowDataPacket[]>(
+    'SELECT DISTINCT school_id FROM roles WHERE account_id = ? AND role = ?',
+    [accountId, Roles.manager],
+  );
+  return result;
+}
+
+export default { addRole, deleteRole, getRoles, getHighestRole, getClassInfo, getRoleById, getManagedSchools };

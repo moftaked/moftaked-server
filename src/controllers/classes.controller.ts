@@ -1,6 +1,7 @@
 import { StatusCodes } from 'http-status-codes';
 import classesService from '../services/classes.service';
 import eventsService from '../services/events.service';
+import authService from '../services/auth.service';
 import { Request, Response, NextFunction } from 'express';
 import personsService from '../services/persons.service';
 import createHttpError from 'http-errors';
@@ -75,6 +76,13 @@ export async function deleteSchool(req: Request, res: Response, next: NextFuncti
   if (isNaN(schoolId)) {
     return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid school ID'));
   }
+  
+  const userId = res.locals['user']['sub'];
+  const isManager = await authService.isManagerOfSchool(userId, schoolId);
+  if (!isManager) {
+    return next(createHttpError(StatusCodes.FORBIDDEN, 'You are not authorized to delete this school'));
+  }
+  
   await classesService.deleteSchool(schoolId);
   res.status(StatusCodes.OK).json({ success: true });
 }

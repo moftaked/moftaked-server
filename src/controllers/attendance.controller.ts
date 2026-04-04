@@ -3,6 +3,8 @@ import attendanceService from '../services/attendance.service';
 import { PatchAttendanceDto } from '../schemas/attendance.schemas';
 import createHttpError from 'http-errors';
 import { StatusCodes } from 'http-status-codes';
+import auditLogService, { AuditEventType } from '../services/audit-log.service';
+import { authenticatedLocals } from '../middleware/authorization.middleware';
 
 export function getAttendance(type: 'student' | 'teacher') {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -22,6 +24,9 @@ export function patchAttendance(type: 'student' | 'teacher') {
     if (isNaN(eventOccurrenceId)) {
       return next(createHttpError(StatusCodes.BAD_REQUEST, 'Event occurrence ID is required'));
     }
+    const user = (req.res?.locals as authenticatedLocals)?.user;
+    const ipAddress = req.ip ?? req.socket.remoteAddress ?? null;
+    const userAgent = req.get('User-Agent') ?? null;
     try {
       await attendanceService.patchAttendance(
         body.attended,
@@ -29,6 +34,12 @@ export function patchAttendance(type: 'student' | 'teacher') {
         eventOccurrenceId,
         type,
       );
+      auditLogService.log(auditLogService.createLogEntry(AuditEventType.ATTENDANCE_MODIFIED, {
+        userId: user?.sub,
+        details: { eventOccurrenceId, type, attended: body.attended, absent: body.absent },
+        ipAddress,
+        userAgent,
+      })).catch(() => {});
       res.json({ message: 'Attendance updated successfully' });
     } catch (err) {
       if (err instanceof Error && err.message === 'EDIT_NOT_LATEST') {

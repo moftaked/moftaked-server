@@ -2,6 +2,15 @@ import { RowDataPacket } from 'mysql2/promise';
 import { getConnection, executeQuery } from './database.service';
 import dataVersionsService from './data-versions.service';
 
+async function getClassIdFromEventOccurrence(eventOccurrenceId: number): Promise<number | null> {
+  const rows = await executeQuery<RowDataPacket[]>(
+    `SELECT class_id FROM event_occurence inner join events using(event_id) WHERE event_occurence_id = ?`,
+    [eventOccurrenceId],
+  );
+  if (rows.length === 0 || !rows[0]) return null;
+  return rows[0]['class_id'] as number;
+}
+
 async function getAttendance(
   eventOccurrenceId: number,
   type: 'student' | 'teacher',
@@ -115,4 +124,4 @@ async function patchAttendance(
   dataVersionsService.touchOccurrenceAttendance(eventOccurrenceId, type).catch(() => {});
 }
 
-export default { getAttendance, isLatestOccurrence, patchAttendance };
+export default { getAttendance, isLatestOccurrence, patchAttendance, getClassIdFromEventOccurrence };

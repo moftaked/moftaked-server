@@ -3,6 +3,8 @@ import { validateData } from '../middleware/validation.middleware';
 import {
   isAuthenticated,
   isInClass,
+  isInEventClass,
+  hasRole,
 } from '../middleware/authorization.middleware';
 import { Roles } from '../enums/roles.enum';
 import {
@@ -15,19 +17,23 @@ import {
   deleteEvent,
 } from '../controllers/events.controller';
 import { EventOccurrenceSchema, EventSchema, SchoolOccurrenceSchema } from '../schemas/events.schemas';
+import { generalApiRateLimiter } from '../middleware/rate-limiting.middleware';
 const eventsRouter = express.Router();
 
 eventsRouter.use(isAuthenticated());
 
 eventsRouter.get('/classes/:classId', getEvents);
-eventsRouter.get('/:eventId/occurrences', getEventOccurrences);
+eventsRouter.get('/:eventId/occurrences', isInEventClass([Roles.teacher, Roles.leader, Roles.manager]), getEventOccurrences);
 eventsRouter.post(
   '/occurrences/school',
+  generalApiRateLimiter,
+  hasRole([Roles.manager]),
   validateData(SchoolOccurrenceSchema),
   createSchoolOccurrences,
 );
 eventsRouter.post(
   '/occurrences',
+  generalApiRateLimiter,
   validateData(EventOccurrenceSchema),
   createEventOccurrence,
 );
@@ -39,6 +45,7 @@ eventsRouter.delete(
 );
 eventsRouter.post(
   '/',
+  generalApiRateLimiter,
   validateData(EventSchema),
   isInClass('body', [Roles.manager]),
   createEvent,
@@ -46,7 +53,7 @@ eventsRouter.post(
 // if request is deleting an event whatever the class associated with the event, this endpoint will delete it if the classId passed the user is actually in.
 eventsRouter.delete(
   '/:eventId',
-  isInClass('body', [Roles.manager]),
+  isInEventClass([Roles.manager]),
   deleteEvent,
 );
 

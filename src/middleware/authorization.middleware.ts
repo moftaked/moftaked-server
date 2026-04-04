@@ -4,6 +4,8 @@ import { Roles } from '../enums/roles.enum';
 import authService from '../services/auth.service';
 import { JwtPayload } from 'jsonwebtoken';
 import personsService from '../services/persons.service';
+import attendanceService from '../services/attendance.service';
+import eventsService from '../services/events.service';
 import createHttpError from 'http-errors';
 import { Err } from 'result2';
 
@@ -23,12 +25,12 @@ export function isInClass(
   whereIsClassId: 'body' | 'params',
   authorizedRoles: Roles[],
 ) {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     const user: { sub: number; username: string } = res.locals['user'];
     const classId =
       whereIsClassId === 'body' ? req.body.class_id : req.params['classId'];
     if (!classId) return next(createHttpError(StatusCodes.BAD_REQUEST, 'Class ID is required'));
-    const authorized = authService.isInAnyClass(
+    const authorized = await authService.isInAnyClass(
       user.sub,
       [classId],
       authorizedRoles,
@@ -51,7 +53,7 @@ export function isInPersonClass(
       personId,
       type,
     );
-    const authorized = authService.isInAnyClass(
+    const authorized = await authService.isInAnyClass(
       user.sub,
       personJoinedClasses.map(c => c.class_id),
       authorizedRoles,
@@ -66,6 +68,44 @@ export function hasRole(requiredRoles: Roles[]) {
     const user: { sub: number; username: string } = res.locals['user'];
     const authorized = await authService.hasRole(user.sub, requiredRoles);
     if (!authorized) return next(createHttpError(StatusCodes.FORBIDDEN, 'You are not authorized to perform this action'));
+    next();
+  };
+}
+
+export function isInAttendanceEventClass(authorizedRoles: Roles[]) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const user: { sub: number; username: string } = res.locals['user'];
+    const eventOccurrenceId = parseInt(req.params['eventOccurrenceId'] || '', 10);
+    if (isNaN(eventOccurrenceId)) {
+      return next(createHttpError(StatusCodes.BAD_REQUEST, 'Event occurrence ID is required'));
+    }
+    const classId = await attendanceService.getClassIdFromEventOccurrence(eventOccurrenceId);
+    if (classId === null) {
+      return next(createHttpError(StatusCodes.NOT_FOUND, 'Event occurrence not found'));
+    }
+    const authorized = await authService.isInAnyClass(user.sub, [classId], authorizedRoles);
+    if (!authorized) {
+      return next(createHttpError(StatusCodes.FORBIDDEN, 'You are not authorized to access this attendance'));
+    }
+    next();
+  };
+}
+
+export function isInEventClass(authorizedRoles: Roles[]) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const user: { sub: number; username: string } = res.locals['user'];
+    const eventId = parseInt(req.params['eventId'] || '', 10);
+    if (isNaN(eventId)) {
+      return next(createHttpError(StatusCodes.BAD_REQUEST, 'Event ID is required'));
+    }
+    const classId = await eventsService.getClassIdFromEvent(eventId);
+    if (classId === null) {
+      return next(createHttpError(StatusCodes.NOT_FOUND, 'Event not found'));
+    }
+    const authorized = await authService.isInAnyClass(user.sub, [classId], authorizedRoles);
+    if (!authorized) {
+      return next(createHttpError(StatusCodes.FORBIDDEN, 'You are not authorized to access this event'));
+    }
     next();
   };
 }

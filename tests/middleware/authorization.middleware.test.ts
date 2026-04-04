@@ -129,20 +129,10 @@ describe('Authorization Middleware', () => {
       mockReq.body = { class_id: 5 };
 
       const middleware = isInClass('body', [Roles.teacher, Roles.leader, Roles.manager]);
-      middleware(mockReq as Request, mockRes as Response, mockNext);
+      await middleware(mockReq as Request, mockRes as Response, mockNext);
 
-      // isInAnyClass is async but isInClass doesn't await it in the source code
-      // Looking at the source: const authorized = authService.isInAnyClass(...)
-      // It's NOT awaited, so it returns a Promise which is truthy
-      // Actually let me re-check the source...
-      // The source code does NOT use async/await for isInClass, so the Promise itself is truthy
-      // This means it always calls next() because Promise is truthy
-      // But the intent is that isInAnyClass is synchronous-looking...
-      // Let me check: isInAnyClass returns Promise<boolean>
-      // In the middleware, `const authorized = authService.isInAnyClass(...)` is not awaited
-      // So authorized is a Promise (truthy), and the check `if (!authorized)` is always false
-      // This is actually a bug in the source code, but we test what the code does
-      expect(mockNext).toHaveBeenCalled();
+      expect(mockNext).toHaveBeenCalledTimes(1);
+      expect(mockNext).toHaveBeenCalledWith();
     });
 
     it('should call next with HttpError 400 when class_id is missing from body', () => {
@@ -237,10 +227,7 @@ describe('Authorization Middleware', () => {
       expect(mockNext).toHaveBeenCalledWith();
     });
 
-    it('should call next() even when isInAnyClass resolves false (not awaited — Promise is truthy)', async () => {
-      // NOTE: isInPersonClass does NOT await authService.isInAnyClass(), so `authorized`
-      // is a Promise object (truthy). The `if (!authorized)` branch is never reached.
-      // This is a bug in the source code, but we test actual behavior.
+    it('should call next with HttpError 403 when user lacks role in person class', async () => {
       mockedPersonsService.getJoinedClasses.mockResolvedValue([
         { class_id: 5, constructor: { name: 'RowDataPacket' } },
       ] as any);
@@ -250,9 +237,10 @@ describe('Authorization Middleware', () => {
       const middleware = isInPersonClass('studentId', 'student', [Roles.leader, Roles.manager]);
       await middleware(mockReq as Request, mockRes as Response, mockNext);
 
-      // Because the Promise is not awaited, it's truthy, so next() is called with no error
       expect(mockNext).toHaveBeenCalledTimes(1);
-      expect(mockNext).toHaveBeenCalledWith();
+      const callArg = mockNext.mock.calls[0]![0] as any;
+      expect(callArg).toBeDefined();
+      expect(callArg.status || callArg.statusCode).toBe(StatusCodes.FORBIDDEN);
     });
 
     it('should throw when person ID param is NaN', async () => {
@@ -307,8 +295,7 @@ describe('Authorization Middleware', () => {
       );
     });
 
-    it('should call next() even when person has no classes (isInAnyClass not awaited)', async () => {
-      // Same bug as above: Promise is not awaited, so authorized is always truthy
+    it('should call next with HttpError 403 when person has no classes', async () => {
       mockedPersonsService.getJoinedClasses.mockResolvedValue([] as any);
       mockedAuthService.isInAnyClass.mockResolvedValue(false as never);
       mockReq.params = { studentId: '99' };
@@ -318,7 +305,9 @@ describe('Authorization Middleware', () => {
 
       expect(mockedAuthService.isInAnyClass).toHaveBeenCalledWith(1, [], [Roles.teacher]);
       expect(mockNext).toHaveBeenCalledTimes(1);
-      expect(mockNext).toHaveBeenCalledWith();
+      const callArg = mockNext.mock.calls[0]![0] as any;
+      expect(callArg).toBeDefined();
+      expect(callArg.status || callArg.statusCode).toBe(StatusCodes.FORBIDDEN);
     });
   });
 

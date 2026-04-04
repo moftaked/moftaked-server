@@ -13,8 +13,9 @@ import {
   getChronicAbsentees,
   getSchoolClassComparison,
 } from "../controllers/reports.controller";
-import { hasRole, isAuthenticated } from "../middleware/authorization.middleware";
+import { hasRole, isAuthenticated, isInClass, isInAttendanceEventClass, isInPersonClass } from "../middleware/authorization.middleware";
 import { Roles } from "../enums/roles.enum";
+import { sensitiveOperationRateLimiter } from "../middleware/rate-limiting.middleware";
 
 const reportsRouter = Router();
 reportsRouter.use(isAuthenticated());
@@ -23,7 +24,7 @@ reportsRouter.use(isAuthenticated());
 // Access check – returns what reports the user can see
 // ---------------------------------------------------------------------------
 // todo: refactor so this route is no longer needed
-reportsRouter.get("/access", getReportsAccess);
+reportsRouter.get("/access", sensitiveOperationRateLimiter, getReportsAccess);
 
 reportsRouter.get("/dates", getUserAvailableDates);
 
@@ -66,14 +67,14 @@ reportsRouter.get(
 // ---------------------------------------------------------------------------
 // Any authenticated user (access checked inside controller)
 // ---------------------------------------------------------------------------
-reportsRouter.get("/teachers/:eventId", getTeacherEventReport);
+reportsRouter.get("/teachers/:eventId", isInAttendanceEventClass([Roles.teacher, Roles.leader, Roles.manager]), getTeacherEventReport);
 
-reportsRouter.get("/class/:classId/summary", getClassAttendanceSummary);
+reportsRouter.get("/class/:classId/summary", isInClass('params', [Roles.teacher, Roles.leader, Roles.manager]), getClassAttendanceSummary);
 
-reportsRouter.get("/class/:classId/dates", getClassAvailableDates);
+reportsRouter.get("/class/:classId/dates", isInClass('params', [Roles.teacher, Roles.leader, Roles.manager]), getClassAvailableDates);
 
-reportsRouter.get("/event/:eventId/trends", getEventAttendanceTrends);
+reportsRouter.get("/event/:eventId/trends", isInAttendanceEventClass([Roles.teacher, Roles.leader, Roles.manager]), getEventAttendanceTrends);
 
-reportsRouter.get("/person/:personId/history", getPersonAttendanceHistory);
+reportsRouter.get("/person/:personId/history", isInPersonClass('personId', 'student', [Roles.teacher, Roles.leader, Roles.manager]), getPersonAttendanceHistory);
 
 export default reportsRouter;

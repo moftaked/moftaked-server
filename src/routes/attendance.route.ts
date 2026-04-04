@@ -1,27 +1,29 @@
 import express from 'express';
-import { isAuthenticated } from '../middleware/authorization.middleware';
+import { isAuthenticated, isInAttendanceEventClass } from '../middleware/authorization.middleware';
 import { getAttendance, patchAttendance } from '../controllers/attendance.controller';
+import { Roles } from '../enums/roles.enum';
 
 const attendanceRouter = express.Router();
 attendanceRouter.use(isAuthenticated());
 
-// there is no mechanism to check if the user is authorized to edit the attendance of teachers or not
-// we need to check if the eventOccurrenceId the user is editing has sufficient permissions
-// we can make a middleware that fetches the class the event occurrence belongs to then use the isInClass middleware
 attendanceRouter.get(
   '/:eventOccurrenceId/students',
+  isInAttendanceEventClass([Roles.teacher, Roles.leader, Roles.manager]),
   getAttendance('student'),
 );
 attendanceRouter.get(
   '/:eventOccurrenceId/teachers',
+  isInAttendanceEventClass([Roles.leader, Roles.manager]),
   getAttendance('teacher'),
 );
 attendanceRouter.patch(
   '/:eventOccurrenceId/students',
+  isInAttendanceEventClass([Roles.teacher, Roles.leader, Roles.manager]),
   patchAttendance('student'),
 );
 attendanceRouter.patch(
   '/:eventOccurrenceId/teachers',
+  isInAttendanceEventClass([Roles.leader, Roles.manager]),
   patchAttendance('teacher'),
 );
 

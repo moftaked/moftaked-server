@@ -66,15 +66,23 @@ async function deleteEvent(eventId: number) {
     'SELECT class_id FROM events WHERE event_id = ?',
     [eventId],
   );
-  await executeQuery(
-    `
-    DELETE FROM events WHERE event_id = ?
-    `,
+  if (rows.length === 0) {
+    return;
+  }
+  const classId = rows[0]!['class_id']!;
+  await executeQuery('DELETE FROM events WHERE event_id = ?', [eventId]);
+  dataVersionsService.touchClassEvents(classId).catch(() => {});
+}
+
+async function getClassIdFromEvent(eventId: number): Promise<number | null> {
+  const rows = await executeQuery<RowDataPacket[]>(
+    'SELECT class_id FROM events WHERE event_id = ?',
     [eventId],
   );
-  if (rows[0]) {
-    dataVersionsService.touchClassEvents(rows[0]['class_id']).catch(() => {});
+  if (rows.length === 0) {
+    return null;
   }
+  return rows[0]!['class_id']!;
 }
 
 async function createEventOccurrence(eventId: number, date: string) {
@@ -176,4 +184,5 @@ export default {
   updateEvent,
   deleteEvent,
   createSchoolOccurrences,
+  getClassIdFromEvent,
 };

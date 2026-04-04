@@ -6,11 +6,21 @@ import { Roles } from '../enums/roles.enum';
 import rolesService from './roles.service';
 import { Err, Ok } from 'result2';
 import { StatusCodes } from 'http-status-codes';
+import fs from 'fs';
+import path from 'path';
 
 let jwtSecret: string;
+let jwtPrivateKey: string;
+let jwtPublicKey: string;
 
 function init(secret: string) {
   jwtSecret = secret;
+  const privateKeyPath = process.env['JWT_PRIVATE_KEY_PATH'];
+  const publicKeyPath = process.env['JWT_PUBLIC_KEY_PATH'];
+  if (privateKeyPath && publicKeyPath) {
+    jwtPrivateKey = fs.readFileSync(path.resolve(privateKeyPath), 'utf8');
+    jwtPublicKey = fs.readFileSync(path.resolve(publicKeyPath), 'utf8');
+  }
 }
 
 async function signIn(username: string, password: string) {
@@ -38,7 +48,12 @@ async function compare(password: string, hashed: string) {
 }
 
 function generateAccessToken(payload: unknown) {
-  // todo: we should ES256
+  if (jwtPrivateKey) {
+    return jwt.sign({ payload }, jwtPrivateKey, {
+      expiresIn: '1Days',
+      algorithm: 'ES256',
+    });
+  }
   return jwt.sign({ payload }, jwtSecret, {
     expiresIn: '1Days',
     algorithm: 'HS256',
@@ -46,10 +61,14 @@ function generateAccessToken(payload: unknown) {
 }
 
 function verify(token: string) {
+  if (jwtPublicKey) {
+    return jwt.verify(token, jwtPublicKey, {
+      algorithms: ['ES256'],
+    }) as jwt.JwtPayload;
+  }
   return jwt.verify(token, jwtSecret, {
     algorithms: ['HS256'],
   }) as jwt.JwtPayload;
-  // return jwt.verify(token, jwtSecret, {algorithms: ['ES256']});
 }
 
 async function isInAnyClass(
@@ -73,4 +92,14 @@ async function hasRole(userId: number, requiredRoles: Roles[]) {
     .some(requiredRole => userRole['role'] === requiredRole));
 }
 
-export default { signIn, init, verify, isInAnyClass, hasRole };
+async function isManagerOfClass(userId: number, classId: number) {
+  const roles = await rolesService.getRoles(userId, [classId]);
+  return roles.some(role => role['role'] === Roles.manager);
+}
+
+async function isManagerOfSchool(userId: number, schoolId: number) {
+  const roles = await rolesService.getRoles(userId, undefined, schoolId);
+  return roles.some(role => role['role'] === Roles.manager);
+}
+
+export default { signIn, init, verify, isInAnyClass, hasRole, isManagerOfClass, isManagerOfSchool };

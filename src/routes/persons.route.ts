@@ -2,8 +2,8 @@ import express from 'express';
 import {
   hasRole,
   isAuthenticated,
-  isInClass,
   isInPersonClass,
+  isInClass,
 } from '../middleware/authorization.middleware';
 import { Roles } from '../enums/roles.enum';
 import { validateData } from '../middleware/validation.middleware';
@@ -20,13 +20,13 @@ import {
   uploadPersonPhoto,
 } from '../controllers/persons.controller';
 import { upload } from '../middleware/image-upload.middleware';
+import { photoUploadRateLimiter } from '../middleware/rate-limiting.middleware';
 
 const personsRouter = express.Router();
 
 personsRouter.use(isAuthenticated());
 
-//todo: cron job to delete unused uploaded photos, and a rate limiter on upload image routes.
-personsRouter.post('/photos', upload.single('photo'), uploadPhoto);
+personsRouter.post('/photos', photoUploadRateLimiter, upload.single('photo'), uploadPhoto);
 
 personsRouter.post(
   '/students',
@@ -42,7 +42,6 @@ personsRouter.post(
   createPerson('teacher'),
 );
 
-//todo: cron job to normalize unprocessed person names on database update
 personsRouter.get('/students', searchByName('student'));
 
 personsRouter.get('/teachers', hasRole([Roles.teacher, Roles.manager]), searchByName('teacher'));
@@ -63,7 +62,6 @@ personsRouter.get(
   getPersonById('teacher'),
 );
 
-// Upload photo for a specific student
 personsRouter.post(
   '/students/:studentId/photo',
   isInPersonClass('studentId', 'student', [
@@ -71,14 +69,15 @@ personsRouter.post(
     Roles.leader,
     Roles.manager,
   ]),
+  photoUploadRateLimiter,
   upload.single('photo'),
   uploadPersonPhoto('student'),
 );
 
-// Upload photo for a specific teacher
 personsRouter.post(
   '/teachers/:teacherId/photo',
   isInPersonClass('teacherId', 'teacher', [Roles.leader, Roles.manager]),
+  photoUploadRateLimiter,
   upload.single('photo'),
   uploadPersonPhoto('teacher'),
 );

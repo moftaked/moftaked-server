@@ -3,15 +3,16 @@ import { addRoleSchema } from '../schemas/roles.schemas';
 import { validateData } from '../middleware/validation.middleware';
 import {
   isAuthenticated,
-  isInClass,
+  hasRole,
 } from '../middleware/authorization.middleware';
 import { Roles } from '../enums/roles.enum';
 import { addRole, getRoles } from '../controllers/roles.controller';
+import { sensitiveOperationRateLimiter } from '../middleware/rate-limiting.middleware';
 const rolesRouter = express.Router();
 
-rolesRouter.use(isAuthenticated(), isInClass('body', [Roles.manager]));
+rolesRouter.use(isAuthenticated(), hasRole([Roles.manager]));
 
-rolesRouter.post('/', validateData(addRoleSchema), addRole);
+rolesRouter.post('/', sensitiveOperationRateLimiter, validateData(addRoleSchema), addRole);
 
 rolesRouter.get('/:userId', getRoles);
 

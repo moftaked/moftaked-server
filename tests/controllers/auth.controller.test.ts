@@ -21,6 +21,9 @@ describe('Auth Controller', () => {
           username: 'testuser',
           password: 'testpass',
         },
+        ip: '127.0.0.1',
+        socket: { remoteAddress: '127.0.0.1' },
+        get: jest.fn().mockReturnValue('test-agent'),
       } as any as Request;
       const res = {
         status: jest.fn().mockReturnThis(),
@@ -44,6 +47,9 @@ describe('Auth Controller', () => {
           username: 'testuser',
           password: 'testpass',
         },
+        ip: '127.0.0.1',
+        socket: { remoteAddress: '127.0.0.1' },
+        get: jest.fn().mockReturnValue('test-agent'),
       } as any as Request;
       const res = {
         status: jest.fn().mockReturnThis(),

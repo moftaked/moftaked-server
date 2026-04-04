@@ -9,11 +9,21 @@ import path from 'path';
 import fs from 'fs';
 import { processAndSaveImage, deleteImageVariants } from '../middleware/image-upload.middleware';
 import dataVersionsService from '../services/data-versions.service';
+import auditLogService, { AuditEventType } from '../services/audit-log.service';
 
 export function createPerson(type: 'student' | 'teacher') {
   return async (req: Request, res: Response) => {
     const personData: CreatePersonDto = req.body;
+    const user = (req.res?.locals as authenticatedLocals)?.user;
+    const ipAddress = req.ip ?? req.socket.remoteAddress ?? null;
+    const userAgent = req.get('User-Agent') ?? null;
     await personsService.createPerson(type, personData);
+    auditLogService.log(auditLogService.createLogEntry(AuditEventType.PERSON_CREATED, {
+      userId: user?.sub,
+      details: { type, personName: personData.name, classId: personData.class_id },
+      ipAddress,
+      userAgent,
+    })).catch(() => {});
     res
       .status(StatusCodes.CREATED)
       .json({ success: true, message: 'Person created successfully' });
@@ -60,10 +70,8 @@ export function searchByName(type: 'student' | 'teacher') {
       return next(Err(StatusCodes.BAD_REQUEST));
     }
     const joinedClasses = (await classesService.getUserJoinedSchoolsClasses(userId))
-    .map(school => school.classes).reduce((classes, schoolClasses) => {
-      classes.push(...schoolClasses)
-      return classes;
-    }, []).map(c => c.class_id);
+    .flatMap(school => school.classes)
+    .map(c => c.class_id);
     const results = await personsService.searchByName(name, type, joinedClasses);
     res.status(StatusCodes.OK).json(results);
   }
@@ -83,6 +91,18 @@ export function updatePerson(type: 'student' | 'teacher') {
     }
 
     const personData: UpdatePersonDto = req.body;
+    const user = (req.res?.locals as authenticatedLocals)?.user;
+    const ipAddress = req.ip ?? req.socket.remoteAddress ?? null;
+    const userAgent = req.get('User-Agent') ?? null;
+
+    const person = await personsService.getPersonById(personId);
+    if (!person || (Array.isArray(person) && person.length === 0)) {
+      res
+        .status(StatusCodes.NOT_FOUND)
+        .json({ success: false, message: 'Person not found' });
+      return;
+    }
+
     const affectedRows = await personsService.updatePerson(
       personId,
       personData,
@@ -94,6 +114,12 @@ export function updatePerson(type: 'student' | 'teacher') {
       });
       return;
     }
+    auditLogService.log(auditLogService.createLogEntry(AuditEventType.PERSON_UPDATED, {
+      userId: user?.sub,
+      details: { type, personId, updates: personData },
+      ipAddress,
+      userAgent,
+    })).catch(() => {});
     res
       .status(StatusCodes.OK)
       .json({ success: true, message: 'Person updated successfully' });
@@ -155,29 +181,25 @@ export function uploadPersonPhoto(type: 'student' | 'teacher') {
       return;
     }
 
+    const user = (req.res?.locals as authenticatedLocals)?.user;
+    const ipAddress = req.ip ?? req.socket.remoteAddress ?? null;
+    const userAgent = req.get('User-Agent') ?? null;
+
     try {
-      // Get old photo to delete it later
       const person = await personsService.getPersonById(personId) as any[];
       const oldPhotoLink = person?.[0]?.photo_link;
 
-      // Process the image buffer into multiple sizes (sm, md, lg)
       const baseFilename = await processAndSaveImage(req.file.buffer, req.file.fieldname);
 
-      // Update the person's photo_link in the database (store base filename)
       await personsService.updatePersonPhoto(personId, baseFilename);
 
-      // Delete old photo files if they exist
       if (oldPhotoLink) {
-        // Handle both legacy single-file and new multi-size formats
         const oldBase = oldPhotoLink.replace(/\.webp$/, '');
         deleteImageVariants(oldBase);
-        // Also try to delete legacy single file
         const legacyPath = path.join('uploads', 'images', oldPhotoLink);
-        fs.unlink(legacyPath, () => {}); // fire-and-forget
+        fs.unlink(legacyPath, () => {});
       }
 
-      // Touch data versions for all classes the person belongs to
-      // so the class table cache is invalidated and shows the new photo
       const allClasses = await personsService.getPersonClasses(personId) as any[];
       const touchKeys: string[] = [];
       for (const c of allClasses) {
@@ -190,6 +212,13 @@ export function uploadPersonPhoto(type: 'student' | 'teacher') {
       if (touchKeys.length > 0) {
         dataVersionsService.touch(...touchKeys).catch(() => {});
       }
+
+      auditLogService.log(auditLogService.createLogEntry(AuditEventType.PHOTO_UPLOADED, {
+        userId: user?.sub,
+        details: { type, personId, filename: baseFilename },
+        ipAddress,
+        userAgent,
+      })).catch(() => {});
 
       res.status(StatusCodes.OK).json({
         success: true,

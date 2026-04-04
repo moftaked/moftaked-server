@@ -1,8 +1,9 @@
 node_modules
+.env*
 .env
-.env.docker
 dist
 public
 todo.md
 coverage
 uploads
+private-key.pem

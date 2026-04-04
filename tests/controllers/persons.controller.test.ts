@@ -30,6 +30,12 @@ describe('Persons Controller', () => {
             notes: 'Some notes',
             class_id: 1,
           },
+          ip: '127.0.0.1',
+          socket: { remoteAddress: '127.0.0.1' },
+          get: jest.fn().mockReturnValue('test-agent'),
+          res: {
+            locals: { user: { sub: 1 } },
+          },
         } as any as Request;
 
         const res = {
@@ -74,6 +80,7 @@ describe('Persons Controller', () => {
         const res = {
           status: jest.fn().mockReturnThis(),
           json: jest.fn(),
+          locals: {},
         } as unknown as Response;
 
         await handler(req, res);

@@ -336,7 +336,7 @@ describe('Events Service', () => {
       await eventsService.deleteEvent(5);
 
       const deleteQuery = mockedExecuteQuery.mock.calls[1]![0] as string;
-      expect(deleteQuery).toContain('DELETE FROM EVENTS');
+      expect(deleteQuery).toContain('DELETE FROM events');
       expect(mockedExecuteQuery.mock.calls[1]![1]).toEqual([5]);
     });
 

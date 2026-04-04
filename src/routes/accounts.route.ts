@@ -7,6 +7,7 @@ import { Roles } from '../enums/roles.enum';
 import { createAccountSchema } from '../schemas/accounts.schemas';
 import { validateData } from '../middleware/validation.middleware';
 import { createAccount, getAccounts, getAllClasses, assignPersonToClass, unassignPersonFromClass, deleteRoleById } from '../controllers/accounts.controller';
+import { accountCreationRateLimiter } from '../middleware/rate-limiting.middleware';
 
 const accountsRouter = express.Router();
 
@@ -18,6 +19,7 @@ accountsRouter.get('/classes', getAllClasses);
 
 accountsRouter.post(
   '/create',
+  accountCreationRateLimiter,
   validateData(createAccountSchema),
   createAccount,
 );
