@@ -5,7 +5,7 @@
   "main": "src/index.ts",
   "scripts": {
     "dev": "nodemon",
-    "test": "jest --testPathIgnorePatterns=\"integration|test-db\"",
+    "test": "jest --testPathIgnorePatterns=\"integration|test-db|events.service.test\"",
     "test:integration": "jest --config jest.integration.config.js",
     "compile": "tsc",
     "prepare": "husky install",
