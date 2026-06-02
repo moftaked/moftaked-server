@@ -739,8 +739,8 @@ describe('Persons Service', () => {
   describe('getPersonClasses()', () => {
     it('should return class list with school names for a person', async () => {
       const mockClasses = [
-        { class_id: 10, class_name: 'الصف الأول', school_name: 'مدرسة 1', type: 'student' },
-        { class_id: 20, class_name: 'الصف الثاني', school_name: 'مدرسة 2', type: 'teacher' },
+        { class_id: 10, class_name: 'الصف الأول', school_name: 'خدمة 1', type: 'student' },
+        { class_id: 20, class_name: 'الصف الثاني', school_name: 'خدمة 2', type: 'teacher' },
       ];
       mockedExecuteQuery.mockResolvedValueOnce(mockClasses as any);
 

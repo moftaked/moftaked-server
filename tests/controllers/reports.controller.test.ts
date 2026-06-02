@@ -54,7 +54,7 @@ describe('Reports Controller', () => {
         isManager: true,
         isLeader: false,
         isTeacher: false,
-        managedSchools: [{ school_id: 1, school_name: 'مدرسة 1' }],
+        managedSchools: [{ school_id: 1, school_name: 'خدمة 1' }],
         leaderClasses: [],
         teacherClasses: [],
       };

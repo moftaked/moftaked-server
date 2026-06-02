@@ -41,9 +41,9 @@ describe('Classes Service', () => {
   describe('getUserJoinedSchoolsClasses()', () => {
     it('should return schools with classes grouped by school_id', async () => {
       mockedExecuteQuery.mockResolvedValue([
-        { school_id: 1, school_name: 'مدرسة الأحد', class_id: 10, class_name: 'فصل أولى', role: 'teacher' },
-        { school_id: 1, school_name: 'مدرسة الأحد', class_id: 11, class_name: 'فصل تانية', role: 'teacher' },
-        { school_id: 2, school_name: 'مدرسة السبت', class_id: 20, class_name: 'فصل تالتة', role: 'leader' },
+        { school_id: 1, school_name: 'خدمة الأحد', class_id: 10, class_name: 'فصل أولى', role: 'teacher' },
+        { school_id: 1, school_name: 'خدمة الأحد', class_id: 11, class_name: 'فصل تانية', role: 'teacher' },
+        { school_id: 2, school_name: 'خدمة السبت', class_id: 20, class_name: 'فصل تالتة', role: 'leader' },
       ] as any);
 
       const result = await classesService.getUserJoinedSchoolsClasses(42);
@@ -51,7 +51,7 @@ describe('Classes Service', () => {
       expect(result).toHaveLength(2);
       expect(result[0]).toEqual({
         school_id: 1,
-        school_name: 'مدرسة الأحد',
+        school_name: 'خدمة الأحد',
         role: 'teacher',
         classes: [
           { class_id: 10, class_name: 'فصل أولى' },
@@ -60,7 +60,7 @@ describe('Classes Service', () => {
       });
       expect(result[1]).toEqual({
         school_id: 2,
-        school_name: 'مدرسة السبت',
+        school_name: 'خدمة السبت',
         role: 'leader',
         classes: [
           { class_id: 20, class_name: 'فصل تالتة' },
@@ -90,8 +90,8 @@ describe('Classes Service', () => {
 
     it('should deduplicate classes when user has multiple roles in the same class', async () => {
       mockedExecuteQuery.mockResolvedValue([
-        { school_id: 1, school_name: 'مدرسة الأحد', class_id: 10, class_name: 'فصل أولى', role: 'teacher' },
-        { school_id: 1, school_name: 'مدرسة الأحد', class_id: 10, class_name: 'فصل أولى', role: 'leader' },
+        { school_id: 1, school_name: 'خدمة الأحد', class_id: 10, class_name: 'فصل أولى', role: 'teacher' },
+        { school_id: 1, school_name: 'خدمة الأحد', class_id: 10, class_name: 'فصل أولى', role: 'leader' },
       ] as any);
 
       const result = await classesService.getUserJoinedSchoolsClasses(42);
@@ -103,8 +103,8 @@ describe('Classes Service', () => {
 
     it('should keep the highest role per school: manager > leader > teacher', async () => {
       mockedExecuteQuery.mockResolvedValue([
-        { school_id: 1, school_name: 'مدرسة الأحد', class_id: 10, class_name: 'فصل أولى', role: 'teacher' },
-        { school_id: 1, school_name: 'مدرسة الأحد', class_id: 11, class_name: 'فصل تانية', role: 'manager' },
+        { school_id: 1, school_name: 'خدمة الأحد', class_id: 10, class_name: 'فصل أولى', role: 'teacher' },
+        { school_id: 1, school_name: 'خدمة الأحد', class_id: 11, class_name: 'فصل تانية', role: 'manager' },
       ] as any);
 
       const result = await classesService.getUserJoinedSchoolsClasses(42);
@@ -115,8 +115,8 @@ describe('Classes Service', () => {
 
     it('should keep leader over teacher when no manager exists', async () => {
       mockedExecuteQuery.mockResolvedValue([
-        { school_id: 1, school_name: 'مدرسة الأحد', class_id: 10, class_name: 'فصل أولى', role: 'teacher' },
-        { school_id: 1, school_name: 'مدرسة الأحد', class_id: 11, class_name: 'فصل تانية', role: 'leader' },
+        { school_id: 1, school_name: 'خدمة الأحد', class_id: 10, class_name: 'فصل أولى', role: 'teacher' },
+        { school_id: 1, school_name: 'خدمة الأحد', class_id: 11, class_name: 'فصل تانية', role: 'leader' },
       ] as any);
 
       const result = await classesService.getUserJoinedSchoolsClasses(42);
@@ -127,9 +127,9 @@ describe('Classes Service', () => {
 
     it('should handle user with classes across multiple schools', async () => {
       mockedExecuteQuery.mockResolvedValue([
-        { school_id: 1, school_name: 'مدرسة 1', class_id: 10, class_name: 'فصل 10', role: 'teacher' },
-        { school_id: 2, school_name: 'مدرسة 2', class_id: 20, class_name: 'فصل 20', role: 'manager' },
-        { school_id: 3, school_name: 'مدرسة 3', class_id: 30, class_name: 'فصل 30', role: 'leader' },
+        { school_id: 1, school_name: 'خدمة 1', class_id: 10, class_name: 'فصل 10', role: 'teacher' },
+        { school_id: 2, school_name: 'خدمة 2', class_id: 20, class_name: 'فصل 20', role: 'manager' },
+        { school_id: 3, school_name: 'خدمة 3', class_id: 30, class_name: 'فصل 30', role: 'leader' },
       ] as any);
 
       const result = await classesService.getUserJoinedSchoolsClasses(42);
@@ -145,8 +145,8 @@ describe('Classes Service', () => {
 
     it('should use the first occurrence role when no upgrade happens', async () => {
       mockedExecuteQuery.mockResolvedValue([
-        { school_id: 1, school_name: 'مدرسة الأحد', class_id: 10, class_name: 'فصل أولى', role: 'manager' },
-        { school_id: 1, school_name: 'مدرسة الأحد', class_id: 11, class_name: 'فصل تانية', role: 'teacher' },
+        { school_id: 1, school_name: 'خدمة الأحد', class_id: 10, class_name: 'فصل أولى', role: 'manager' },
+        { school_id: 1, school_name: 'خدمة الأحد', class_id: 11, class_name: 'فصل تانية', role: 'teacher' },
       ] as any);
 
       const result = await classesService.getUserJoinedSchoolsClasses(42);
@@ -369,8 +369,8 @@ describe('Classes Service', () => {
   describe('getSchools()', () => {
     it('should return all schools ordered by name', async () => {
       const mockSchools = [
-        { school_id: 1, school_name: 'مدرسة الأحد' },
-        { school_id: 2, school_name: 'مدرسة السبت' },
+        { school_id: 1, school_name: 'خدمة الأحد' },
+        { school_id: 2, school_name: 'خدمة السبت' },
       ];
       mockedExecuteQuery.mockResolvedValue(mockSchools as any);
 
@@ -401,18 +401,18 @@ describe('Classes Service', () => {
     it('should insert a school with the given name', async () => {
       mockedExecuteQuery.mockResolvedValue({ insertId: 1, affectedRows: 1 } as any);
 
-      await classesService.createSchool('مدرسة جديدة');
+      await classesService.createSchool('خدمة جديدة');
 
       expect(mockedExecuteQuery).toHaveBeenCalledWith(
         'INSERT INTO schools (school_name) VALUES (?)',
-        ['مدرسة جديدة'],
+        ['خدمة جديدة'],
       );
     });
 
     it('should touch classes data version after insert', async () => {
       mockedExecuteQuery.mockResolvedValue({ insertId: 1 } as any);
 
-      await classesService.createSchool('مدرسة');
+      await classesService.createSchool('خدمة');
 
       expect(mockedDataVersionsService.touchClasses).toHaveBeenCalledTimes(1);
     });
@@ -421,7 +421,7 @@ describe('Classes Service', () => {
       mockedExecuteQuery.mockRejectedValue(new Error('Duplicate') as never);
 
       await expect(
-        classesService.createSchool('مدرسة'),
+        classesService.createSchool('خدمة'),
       ).rejects.toThrow('Duplicate');
     });
   });
@@ -610,8 +610,8 @@ describe('Classes Service', () => {
   describe('getAllClassesWithSchool()', () => {
     it('should return classes joined with school info', async () => {
       const mockData = [
-        { class_id: 1, class_name: 'فصل أولى', school_id: 1, school_name: 'مدرسة الأحد' },
-        { class_id: 2, class_name: 'فصل تانية', school_id: 1, school_name: 'مدرسة الأحد' },
+        { class_id: 1, class_name: 'فصل أولى', school_id: 1, school_name: 'خدمة الأحد' },
+        { class_id: 2, class_name: 'فصل تانية', school_id: 1, school_name: 'خدمة الأحد' },
       ];
       mockedExecuteQuery.mockResolvedValue(mockData as any);
 

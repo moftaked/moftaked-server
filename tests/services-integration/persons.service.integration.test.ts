@@ -24,16 +24,13 @@ describe('Persons Service — DB Integration', () => {
 
   beforeAll(async () => {
     await createTestDatabase();
-    console.log('test database created');
   });
 
   afterAll(async () => {
     await dropTestDatabase();
-    console.log('test database dropped');
   });
 
   beforeEach(async () => {
-    const start = new Date();
     await truncateAllTables();
 
     school = { school_name: 'Persons School' };
@@ -44,7 +41,6 @@ describe('Persons Service — DB Integration', () => {
       schools: [school],
       districts: [district1, district2],
     });
-    console.log('base data seeded');
     schoolId = baseSeed.schoolIds[0]!;
     district1Id = baseSeed.districtIds[0]!;
     district2Id = baseSeed.districtIds[1]!;
@@ -55,23 +51,16 @@ describe('Persons Service — DB Integration', () => {
         { class_name: 'Class B', school_id: schoolId },
       ],
     });
-    console.log('classes seeded');
     class1Id = classSeed.classIds[0]!;
     class2Id = classSeed.classIds[1]!;
-    const end = new Date();
-    console.log(`beforeEach setup completed in ${(end.getTime() - start.getTime()) / 1000} seconds at:`, end.toISOString());
   });
 
-  afterEach(async () => {
-    console.log('another test case finished at:', new Date().toISOString());
-  })
   // ---------------------------------------------------------------------------
   // createPerson()
   // ---------------------------------------------------------------------------
 
   describe('createPerson()', () => {
     it('should insert a student with all required fields into persons, phone_numbers, and person_class', async () => {
-      console.log('Running createPerson test at:', new Date().toISOString());
       await personsService.createPerson('student', {
         name: 'أحمد محمد',
         address: 'شارع النيل',
@@ -109,7 +98,6 @@ describe('Persons Service — DB Integration', () => {
     });
 
     it('should insert a teacher with type "teacher"', async () => {
-      console.log('Running createPerson teacher test at:', new Date().toISOString());
       await personsService.createPerson('teacher', {
         name: 'المعلم خالد',
         address: 'شارع الجيش',
@@ -126,7 +114,6 @@ describe('Persons Service — DB Integration', () => {
     });
 
     it('should insert a second phone number when provided', async () => {
-      console.log('Running createPerson with second phone test at:', new Date().toISOString());
       await personsService.createPerson('student', {
         name: 'Two Phones',
         address: 'Addr',
@@ -152,7 +139,6 @@ describe('Persons Service — DB Integration', () => {
     });
 
     it('should only insert one phone number when second_phone_number is not provided', async () => {
-      console.log('Running createPerson without second phone test at:', new Date().toISOString());
       await personsService.createPerson('student', {
         name: 'One Phone',
         address: 'Addr',
@@ -175,7 +161,6 @@ describe('Persons Service — DB Integration', () => {
     });
 
     it('should store the normalized Arabic name in normalized_person_name', async () => {
-      console.log('Running createPerson normalized name test at:', new Date().toISOString());
       await personsService.createPerson('student', {
         name: 'أحمد إبراهيم',
         address: 'Addr',
@@ -196,7 +181,6 @@ describe('Persons Service — DB Integration', () => {
     });
 
     it('should trim whitespace from name, address, phone_number, and notes', async () => {
-      console.log('Running createPerson trim whitespace test at:', new Date().toISOString());
       await personsService.createPerson('student', {
         name: '  Trimmed Name  ',
         address: '  Trimmed Address  ',
@@ -225,7 +209,6 @@ describe('Persons Service — DB Integration', () => {
     });
 
     it('should store optional notes field', async () => {
-      console.log('Running createPerson with notes test at:', new Date().toISOString());
       await personsService.createPerson('student', {
         name: 'Notes Student',
         address: 'Addr',
@@ -243,7 +226,6 @@ describe('Persons Service — DB Integration', () => {
     });
 
     it('should rollback on DB error — no partial records inserted', async () => {
-      console.log('Running createPerson rollback test at:', new Date().toISOString());
       // Use an invalid district_id (FK constraint) to trigger an error
       try {
         await personsService.createPerson('student', {
@@ -278,7 +260,6 @@ describe('Persons Service — DB Integration', () => {
 
   describe('getPersonById()', () => {
     it('should return a person with joined district and phone numbers (GROUP_CONCAT)', async () => {
-      console.log('Running getPersonById test at:', new Date().toISOString());
       const personSeed = await seedTestData({
         persons: [
           {
@@ -311,7 +292,6 @@ describe('Persons Service — DB Integration', () => {
     });
 
     it('should return an empty result for a non-existent person ID', async () => {
-      console.log('Running getPersonById with non-existent ID test at:', new Date().toISOString());
       const results = (await personsService.getPersonById(99999)) as any[];
       // The query may return a row with null values or an empty array depending
       // on the GROUP BY behavior. Either way, there should be no meaningful person data.
@@ -321,7 +301,6 @@ describe('Persons Service — DB Integration', () => {
     });
 
     it('should return null phone_numbers when person has no phone records', async () => {
-      console.log('Running getPersonById with no phones test at:', new Date().toISOString());
       const personSeed = await seedTestData({
         persons: [
           {
@@ -364,13 +343,11 @@ describe('Persons Service — DB Integration', () => {
     });
 
     it('should return empty array when classIds is empty', async () => {
-      console.log('Running searchByName with empty classIds test at:', new Date().toISOString());
       const results = await personsService.searchByName('أحمد', 'student', []);
       expect(results).toEqual([]);
     });
 
     it('should find students matching the search term in the specified classes', async () => {
-      console.log('Running searchByName basic search test at:', new Date().toISOString());
       const results = (await personsService.searchByName('احمد', 'student', [class1Id])) as any[];
       // Should match 'أحمد محمد إبراهيم' and 'محمد أحمد' in class1
       expect(results.length).toBeGreaterThanOrEqual(1);
@@ -381,7 +358,6 @@ describe('Persons Service — DB Integration', () => {
     });
 
     it('should not return persons from classes not in classIds', async () => {
-      console.log('Running searchByName with class filter test at:', new Date().toISOString());
       // Search in class1 only — خالد يوسف is in class2
       const results = (await personsService.searchByName('خالد', 'student', [class1Id])) as any[];
       const names = results.map((r: any) => r.person_name);
@@ -389,14 +365,12 @@ describe('Persons Service — DB Integration', () => {
     });
 
     it('should search across multiple classes when multiple classIds provided', async () => {
-      console.log('Running searchByName with multiple classIds test at:', new Date().toISOString());
       const results = (await personsService.searchByName('احمد', 'student', [class1Id, class2Id])) as any[];
       // Should find matches from both classes
       expect(results.length).toBeGreaterThanOrEqual(1);
     });
 
     it('should only return persons of the specified type (student)', async () => {
-      console.log('Running searchByName with type filter test at:', new Date().toISOString());
       // 'Teacher Person' is a teacher in class1 — should not appear in student search
       const results = (await personsService.searchByName('teacher', 'student', [class1Id])) as any[];
       const names = results.map((r: any) => r.person_name);
@@ -404,7 +378,6 @@ describe('Persons Service — DB Integration', () => {
     });
 
     it('should only return persons of the specified type (teacher)', async () => {
-      console.log('Running searchByName with teacher type filter test at:', new Date().toISOString());
       const results = (await personsService.searchByName('teacher', 'teacher', [class1Id])) as any[];
       expect(results.length).toBeGreaterThanOrEqual(1);
       const names = results.map((r: any) => r.person_name);
@@ -412,7 +385,6 @@ describe('Persons Service — DB Integration', () => {
     });
 
     it('should return empty array when no names match', async () => {
-      console.log('Running searchByName with no matches test at:', new Date().toISOString());
       const results = (await personsService.searchByName('zzzznonexistent', 'student', [class1Id])) as any[];
       expect(results).toHaveLength(0);
     });

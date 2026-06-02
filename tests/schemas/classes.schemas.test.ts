@@ -10,7 +10,7 @@ import {
 describe('Classes Schemas', () => {
   describe('CreateSchoolSchema', () => {
     it('should pass with valid school name', () => {
-      const result = CreateSchoolSchema.safeParse({ school_name: 'مدرسة الأحد' });
+      const result = CreateSchoolSchema.safeParse({ school_name: 'خدمة الأحد' });
       expect(result.success).toBe(true);
     });
 
@@ -35,10 +35,10 @@ describe('Classes Schemas', () => {
     });
 
     it('should trim school_name whitespace', () => {
-      const result = CreateSchoolSchema.safeParse({ school_name: '  مدرسة الأحد  ' });
+      const result = CreateSchoolSchema.safeParse({ school_name: '  خدمة الأحد  ' });
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.school_name).toBe('مدرسة الأحد');
+        expect(result.data.school_name).toBe('خدمة الأحد');
       }
     });
 
@@ -90,7 +90,7 @@ describe('Classes Schemas', () => {
 
   describe('UpdateSchoolSchema', () => {
     it('should pass with valid school name', () => {
-      const result = UpdateSchoolSchema.safeParse({ school_name: 'مدرسة السبت' });
+      const result = UpdateSchoolSchema.safeParse({ school_name: 'خدمة السبت' });
       expect(result.success).toBe(true);
     });
 
@@ -115,10 +115,10 @@ describe('Classes Schemas', () => {
     });
 
     it('should trim school_name whitespace', () => {
-      const result = UpdateSchoolSchema.safeParse({ school_name: '  مدرسة السبت  ' });
+      const result = UpdateSchoolSchema.safeParse({ school_name: '  خدمة السبت  ' });
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.school_name).toBe('مدرسة السبت');
+        expect(result.data.school_name).toBe('خدمة السبت');
       }
     });
 

@@ -22,45 +22,45 @@ describe('Reports Service', () => {
   describe('getReportsAccess()', () => {
     it('should return isManager true when user has manager role', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([
-        { role: 'manager', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'مدرسة 1' },
+        { role: 'manager', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'خدمة 1' },
       ] as any);
 
       const result = await reportsService.getReportsAccess(100);
 
       expect(result.isManager).toBe(true);
-      expect(result.managedSchools).toEqual([{ school_id: 1, school_name: 'مدرسة 1' }]);
+      expect(result.managedSchools).toEqual([{ school_id: 1, school_name: 'خدمة 1' }]);
     });
 
     it('should return isLeader true when user has leader role', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([
-        { role: 'leader', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'مدرسة 1' },
+        { role: 'leader', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'خدمة 1' },
       ] as any);
 
       const result = await reportsService.getReportsAccess(100);
 
       expect(result.isLeader).toBe(true);
       expect(result.leaderClasses).toEqual([
-        { class_id: 10, class_name: 'الصف الأول', school_name: 'مدرسة 1' },
+        { class_id: 10, class_name: 'الصف الأول', school_name: 'خدمة 1' },
       ]);
     });
 
     it('should return isTeacher true when user has teacher role', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([
-        { role: 'teacher', class_id: 20, school_id: 2, class_name: 'الصف الثاني', school_name: 'مدرسة 2' },
+        { role: 'teacher', class_id: 20, school_id: 2, class_name: 'الصف الثاني', school_name: 'خدمة 2' },
       ] as any);
 
       const result = await reportsService.getReportsAccess(100);
 
       expect(result.isTeacher).toBe(true);
       expect(result.teacherClasses).toEqual([
-        { class_id: 20, class_name: 'الصف الثاني', school_name: 'مدرسة 2' },
+        { class_id: 20, class_name: 'الصف الثاني', school_name: 'خدمة 2' },
       ]);
     });
 
     it('should deduplicate managed schools', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([
-        { role: 'manager', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'مدرسة 1' },
-        { role: 'manager', class_id: 20, school_id: 1, class_name: 'الصف الثاني', school_name: 'مدرسة 1' },
+        { role: 'manager', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'خدمة 1' },
+        { role: 'manager', class_id: 20, school_id: 1, class_name: 'الصف الثاني', school_name: 'خدمة 1' },
       ] as any);
 
       const result = await reportsService.getReportsAccess(100);
@@ -71,8 +71,8 @@ describe('Reports Service', () => {
 
     it('should deduplicate leader classes', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([
-        { role: 'leader', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'مدرسة 1' },
-        { role: 'leader', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'مدرسة 1' },
+        { role: 'leader', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'خدمة 1' },
+        { role: 'leader', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'خدمة 1' },
       ] as any);
 
       const result = await reportsService.getReportsAccess(100);
@@ -82,8 +82,8 @@ describe('Reports Service', () => {
 
     it('should deduplicate teacher classes', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([
-        { role: 'teacher', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'مدرسة 1' },
-        { role: 'teacher', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'مدرسة 1' },
+        { role: 'teacher', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'خدمة 1' },
+        { role: 'teacher', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'خدمة 1' },
       ] as any);
 
       const result = await reportsService.getReportsAccess(100);
@@ -93,7 +93,7 @@ describe('Reports Service', () => {
 
     it('should include manager classes in leaderClasses (managers can access leader reports)', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([
-        { role: 'manager', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'مدرسة 1' },
+        { role: 'manager', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'خدمة 1' },
       ] as any);
 
       const result = await reportsService.getReportsAccess(100);
@@ -117,9 +117,9 @@ describe('Reports Service', () => {
 
     it('should handle user with all three role types', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([
-        { role: 'manager', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'مدرسة 1' },
-        { role: 'leader', class_id: 20, school_id: 2, class_name: 'الصف الثاني', school_name: 'مدرسة 2' },
-        { role: 'teacher', class_id: 30, school_id: 3, class_name: 'الصف الثالث', school_name: 'مدرسة 3' },
+        { role: 'manager', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'خدمة 1' },
+        { role: 'leader', class_id: 20, school_id: 2, class_name: 'الصف الثاني', school_name: 'خدمة 2' },
+        { role: 'teacher', class_id: 30, school_id: 3, class_name: 'الصف الثالث', school_name: 'خدمة 3' },
       ] as any);
 
       const result = await reportsService.getReportsAccess(100);
@@ -319,7 +319,7 @@ describe('Reports Service', () => {
     it('should return overAllStats for each managed school', async () => {
       // First call: getSchoolsManagedByUser query
       mockedExecuteQuery.mockResolvedValueOnce([
-        { school_id: 1, school_name: 'مدرسة 1' },
+        { school_id: 1, school_name: 'خدمة 1' },
       ] as any);
       // Second call: getSchoolOverAllStats for school 1
       mockedExecuteQuery.mockResolvedValueOnce([
@@ -331,7 +331,7 @@ describe('Reports Service', () => {
       expect(result).toHaveProperty('overAllStats');
       expect((result as any).overAllStats).toHaveLength(1);
       expect((result as any).overAllStats[0].school_id).toBe(1);
-      expect((result as any).overAllStats[0].school_name).toBe('مدرسة 1');
+      expect((result as any).overAllStats[0].school_name).toBe('خدمة 1');
     });
 
     it('should return Err(FORBIDDEN) when user manages no schools', async () => {
@@ -347,7 +347,7 @@ describe('Reports Service', () => {
 
     it('should aggregate stats by event name', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([
-        { school_id: 1, school_name: 'مدرسة 1' },
+        { school_id: 1, school_name: 'خدمة 1' },
       ] as any);
       // getSchoolOverAllStats returns multiple rows for same event
       mockedExecuteQuery.mockResolvedValueOnce([
@@ -368,8 +368,8 @@ describe('Reports Service', () => {
 
     it('should handle multiple managed schools', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([
-        { school_id: 1, school_name: 'مدرسة 1' },
-        { school_id: 2, school_name: 'مدرسة 2' },
+        { school_id: 1, school_name: 'خدمة 1' },
+        { school_id: 2, school_name: 'خدمة 2' },
       ] as any);
       // Stats for school 1
       mockedExecuteQuery.mockResolvedValueOnce([
@@ -417,14 +417,14 @@ describe('Reports Service', () => {
       ] as any);
       // Second call: class info query
       mockedExecuteQuery.mockResolvedValueOnce([
-        { class_id: 10, class_name: 'الصف الأول', school_name: 'مدرسة 1' },
+        { class_id: 10, class_name: 'الصف الأول', school_name: 'خدمة 1' },
       ] as any);
 
       const result = await reportsService.getClassAttendanceSummary(10, '2025-01-15');
 
       expect(result.class_id).toBe(10);
       expect(result.class_name).toBe('الصف الأول');
-      expect(result.school_name).toBe('مدرسة 1');
+      expect(result.school_name).toBe('خدمة 1');
       expect(result.date).toBe('2025-01-15');
       expect(result.events).toHaveLength(1);
       expect(result.events[0]!.event_id).toBe(1);
@@ -440,7 +440,7 @@ describe('Reports Service', () => {
         },
       ] as any);
       mockedExecuteQuery.mockResolvedValueOnce([
-        { class_id: 10, class_name: 'الصف', school_name: 'مدرسة' },
+        { class_id: 10, class_name: 'الصف', school_name: 'خدمة' },
       ] as any);
 
       const result = await reportsService.getClassAttendanceSummary(10, '2025-01-15');
@@ -461,7 +461,7 @@ describe('Reports Service', () => {
         },
       ] as any);
       mockedExecuteQuery.mockResolvedValueOnce([
-        { class_id: 10, class_name: 'الصف', school_name: 'مدرسة' },
+        { class_id: 10, class_name: 'الصف', school_name: 'خدمة' },
       ] as any);
 
       const result = await reportsService.getClassAttendanceSummary(10, '2025-01-15');
@@ -483,7 +483,7 @@ describe('Reports Service', () => {
         },
       ] as any);
       mockedExecuteQuery.mockResolvedValueOnce([
-        { class_id: 10, class_name: 'الصف', school_name: 'مدرسة' },
+        { class_id: 10, class_name: 'الصف', school_name: 'خدمة' },
       ] as any);
 
       const result = await reportsService.getClassAttendanceSummary(10, '2025-01-15');
@@ -495,7 +495,7 @@ describe('Reports Service', () => {
     it('should return empty events array when no results', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
       mockedExecuteQuery.mockResolvedValueOnce([
-        { class_id: 10, class_name: 'الصف', school_name: 'مدرسة' },
+        { class_id: 10, class_name: 'الصف', school_name: 'خدمة' },
       ] as any);
 
       const result = await reportsService.getClassAttendanceSummary(10, '2025-01-15');
@@ -512,7 +512,7 @@ describe('Reports Service', () => {
         },
       ] as any);
       mockedExecuteQuery.mockResolvedValueOnce([
-        { class_id: 10, class_name: 'الصف', school_name: 'مدرسة' },
+        { class_id: 10, class_name: 'الصف', school_name: 'خدمة' },
       ] as any);
 
       const result = await reportsService.getClassAttendanceSummary(10, '2025-01-15');
@@ -1096,13 +1096,13 @@ describe('Reports Service', () => {
       ] as any);
       // Second call: school info
       mockedExecuteQuery.mockResolvedValueOnce([
-        { school_id: 1, school_name: 'مدرسة 1' },
+        { school_id: 1, school_name: 'خدمة 1' },
       ] as any);
 
       const result = await reportsService.getSchoolClassComparison(1, '2025-01-15');
 
       expect(result.school_id).toBe(1);
-      expect(result.school_name).toBe('مدرسة 1');
+      expect(result.school_name).toBe('خدمة 1');
       expect(result.date).toBe('2025-01-15');
       expect(result.classes).toHaveLength(2);
     });
@@ -1113,7 +1113,7 @@ describe('Reports Service', () => {
         { class_id: 10, class_name: 'الصف', event_id: 2, event_name: 'اجتماع', person_type: 'student', total: 10, attended: 9 },
       ] as any);
       mockedExecuteQuery.mockResolvedValueOnce([
-        { school_id: 1, school_name: 'مدرسة' },
+        { school_id: 1, school_name: 'خدمة' },
       ] as any);
 
       const result = await reportsService.getSchoolClassComparison(1, '2025-01-15');
@@ -1127,7 +1127,7 @@ describe('Reports Service', () => {
         { class_id: 10, class_name: 'الصف', event_id: 1, event_name: 'حضور', person_type: 'student', total: 10, attended: 8 },
       ] as any);
       mockedExecuteQuery.mockResolvedValueOnce([
-        { school_id: 1, school_name: 'مدرسة' },
+        { school_id: 1, school_name: 'خدمة' },
       ] as any);
 
       const result = await reportsService.getSchoolClassComparison(1, '2025-01-15');
@@ -1143,7 +1143,7 @@ describe('Reports Service', () => {
         { class_id: 10, class_name: 'الصف', event_id: 1, event_name: 'حضور', person_type: 'student', total: 0, attended: 0 },
       ] as any);
       mockedExecuteQuery.mockResolvedValueOnce([
-        { school_id: 1, school_name: 'مدرسة' },
+        { school_id: 1, school_name: 'خدمة' },
       ] as any);
 
       const result = await reportsService.getSchoolClassComparison(1, '2025-01-15');
@@ -1154,7 +1154,7 @@ describe('Reports Service', () => {
     it('should return empty classes when no results', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
       mockedExecuteQuery.mockResolvedValueOnce([
-        { school_id: 1, school_name: 'مدرسة' },
+        { school_id: 1, school_name: 'خدمة' },
       ] as any);
 
       const result = await reportsService.getSchoolClassComparison(1, '2025-01-15');

@@ -8,6 +8,8 @@ jest.mock('../../src/services/roles.service');
 jest.mock('bcrypt');
 jest.mock('jsonwebtoken');
 
+import fs from 'fs';
+
 import authService from '../../src/services/auth.service';
 import { executeQuery } from '../../src/services/database.service';
 import rolesService from '../../src/services/roles.service';
@@ -22,6 +24,8 @@ const mockedJwt = jwt as jest.Mocked<typeof jwt>;
 describe('Auth Service', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Prevent default key file loading in tests
+    jest.spyOn(fs, 'existsSync').mockReturnValue(false);
     // Initialize the service with a test secret
     authService.init('test-jwt-secret');
   });
@@ -97,14 +101,14 @@ describe('Auth Service', () => {
       );
     });
 
-    it('should return Err(404) when user is not found', async () => {
+    it('should return Err(401) when user is not found', async () => {
       mockedExecuteQuery.mockResolvedValue([] as any);
 
       const result = await authService.signIn('nonexistent', 'password');
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.err()).toBe(StatusCodes.NOT_FOUND);
+        expect(result.err()).toBe(StatusCodes.UNAUTHORIZED);
       }
     });
 

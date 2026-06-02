@@ -4,11 +4,11 @@ import path from 'path';
 import fs from 'fs';
 
 const dbConfig = {
-  host: process.env['DB_HOST'],
-  database: process.env['DB_NAME'],
-  user: process.env['DB_USER'],
-  password: process.env['DB_PASSWORD'],
-  port: parseInt(process.env['DB_PORT'], 10),
+  host: process.env['DB_HOST'] ?? 'localhost',
+  database: process.env['DB_NAME'] ?? 'moftaked',
+  user: process.env['DB_USER'] ?? 'tony',
+  password: process.env['DB_PASSWORD'] ?? '',
+  port: parseInt(process.env['DB_PORT'] ?? '3306', 10),
 };
 
 let adminPool: mysql.Pool | undefined;
@@ -53,6 +53,18 @@ export async function createTestDatabase(): Promise<string> {
   });
 
   await schemaPool.query(schemaSql);
+
+  helperPool = mysql.createPool({
+    host: dbConfig.host,
+    port: dbConfig.port,
+    user: dbConfig.user,
+    password: dbConfig.password,
+    database: testDbName,
+    multipleStatements: true,
+    waitForConnections: true,
+    connectionLimit: 50,
+  });
+
   await schemaPool.end();
 
   // Point the application's database.service at the test DB
@@ -92,23 +104,9 @@ export async function truncateAllTables(): Promise<void> {
     throw new Error('truncateAllTables called before createTestDatabase');
   }
 
-  // We need a fresh pool that targets the test DB for admin operations.
-  // Re-use the app pool via executeQuery would work too, but using a
-  // dedicated connection avoids any coupling.
-  const pool = mysql.createPool({
-    host: dbConfig.host,
-    port: dbConfig.port,
-    user: dbConfig.user,
-    password: dbConfig.password,
-    database: testDbName,
-    multipleStatements: true,
-    waitForConnections: true,
-    connectionLimit: 1,
-  });
-
   const statements = [
     'SET FOREIGN_KEY_CHECKS=0;',
-    ...ALL_TABLES.map((t) => `TRUNCATE TABLE \`${t}\`;`),
+    ...ALL_TABLES.map((t) => `DELETE FROM \`${t}\`;`),
     'SET FOREIGN_KEY_CHECKS=1;',
   ].join('\n');
 
@@ -257,16 +255,6 @@ export async function seedTestData(data: SeedData): Promise<{
     throw new Error('seedTestData called before createTestDatabase');
   }
 
-  const pool = mysql.createPool({
-    host: dbConfig.host,
-    port: dbConfig.port,
-    user: dbConfig.user,
-    password: dbConfig.password,
-    database: testDbName,
-    waitForConnections: true,
-    connectionLimit: 1,
-  });
-
   const result = {
     schoolIds: [] as number[],
     districtIds: [] as number[],
@@ -283,7 +271,7 @@ export async function seedTestData(data: SeedData): Promise<{
   {
     // Schools
     for (const s of data.schools ?? []) {
-      const [res] = await pool.execute<mysql.ResultSetHeader>(
+      const [res] = await helperPool!.execute<mysql.ResultSetHeader>(
         'INSERT INTO schools (school_name) VALUES (?)',
         [s.school_name],
       );
@@ -293,7 +281,7 @@ export async function seedTestData(data: SeedData): Promise<{
 
     // Districts
     for (const d of data.districts ?? []) {
-      const [res] = await pool.execute<mysql.ResultSetHeader>(
+      const [res] = await helperPool!.execute<mysql.ResultSetHeader>(
         'INSERT INTO districts (district_name) VALUES (?)',
         [d.district_name],
       );
@@ -303,7 +291,7 @@ export async function seedTestData(data: SeedData): Promise<{
 
     // Persons (depends on districts)
     for (const p of data.persons ?? []) {
-      const [res] = await pool.execute<mysql.ResultSetHeader>(
+      const [res] = await helperPool!.execute<mysql.ResultSetHeader>(
         'INSERT INTO persons (person_name, address, district_id, normalized_person_name, notes, photo_link) VALUES (?, ?, ?, ?, ?, ?)',
         [
           p.person_name,
@@ -320,7 +308,7 @@ export async function seedTestData(data: SeedData): Promise<{
 
     // Accounts (depends on persons — person_id is optional FK)
     for (const a of data.accounts ?? []) {
-      const [res] = await pool.execute<mysql.ResultSetHeader>(
+      const [res] = await helperPool!.execute<mysql.ResultSetHeader>(
         'INSERT INTO accounts (username, password, real_name) VALUES (?, ?, ?)',
         [a.username, a.password, a.real_name],
       );
@@ -330,7 +318,7 @@ export async function seedTestData(data: SeedData): Promise<{
 
     // Classes (depends on schools)
     for (const c of data.classes ?? []) {
-      const [res] = await pool.execute<mysql.ResultSetHeader>(
+      const [res] = await helperPool!.execute<mysql.ResultSetHeader>(
         'INSERT INTO classes (class_name, school_id) VALUES (?, ?)',
         [c.class_name, c.school_id],
       );
@@ -340,7 +328,7 @@ export async function seedTestData(data: SeedData): Promise<{
 
     // Phone numbers (depends on persons)
     for (const pn of data.phoneNumbers ?? []) {
-      const [res] = await pool.execute<mysql.ResultSetHeader>(
+      const [res] = await helperPool!.execute<mysql.ResultSetHeader>(
         'INSERT INTO phone_numbers (person_id, phone_number) VALUES (?, ?)',
         [pn.person_id, pn.phone_number],
       );
@@ -350,7 +338,7 @@ export async function seedTestData(data: SeedData): Promise<{
 
     // Person-class assignments (depends on persons + classes)
     for (const pc of data.personClasses ?? []) {
-      const [res] = await pool.execute<mysql.ResultSetHeader>(
+      const [res] = await helperPool!.execute<mysql.ResultSetHeader>(
         'INSERT INTO person_class (person_id, class_id, type) VALUES (?, ?, ?)',
         [pc.person_id, pc.class_id, pc.type],
       );
@@ -360,7 +348,7 @@ export async function seedTestData(data: SeedData): Promise<{
 
     // Events (depends on classes)
     for (const e of data.events ?? []) {
-      const [res] = await pool.execute<mysql.ResultSetHeader>(
+      const [res] = await helperPool!.execute<mysql.ResultSetHeader>(
         'INSERT INTO events (class_id, event_name, type) VALUES (?, ?, ?)',
         [e.class_id, e.event_name, e.type],
       );
@@ -370,7 +358,7 @@ export async function seedTestData(data: SeedData): Promise<{
 
     // Event occurrences (depends on events)
     for (const eo of data.eventOccurrences ?? []) {
-      const [res] = await pool.execute<mysql.ResultSetHeader>(
+      const [res] = await helperPool!.execute<mysql.ResultSetHeader>(
         'INSERT INTO event_occurence (event_id, occurence_date) VALUES (?, ?)',
         [eo.event_id, eo.occurence_date],
       );
@@ -380,7 +368,7 @@ export async function seedTestData(data: SeedData): Promise<{
 
     // Roles (depends on accounts + classes + schools)
     for (const r of data.roles ?? []) {
-      const [res] = await pool.execute<mysql.ResultSetHeader>(
+      const [res] = await helperPool!.execute<mysql.ResultSetHeader>(
         'INSERT INTO roles (account_id, class_id, role, school_id) VALUES (?, ?, ?, ?)',
         [r.account_id, r.class_id, r.role, r.school_id],
       );

@@ -39,7 +39,7 @@ describe('Sync Controller', () => {
       const mockSchools = [
         {
           school_id: 1,
-          school_name: 'مدرسة 1',
+          school_name: 'خدمة 1',
           role: 'leader',
           classes: [
             { class_id: 10, class_name: 'الصف الأول' },
@@ -85,7 +85,7 @@ describe('Sync Controller', () => {
       const mockSchools = [
         {
           school_id: 1,
-          school_name: 'مدرسة 1',
+          school_name: 'خدمة 1',
           role: 'leader',
           classes: [
             { class_id: 10, class_name: 'الصف الأول' },
@@ -93,7 +93,7 @@ describe('Sync Controller', () => {
         },
         {
           school_id: 2,
-          school_name: 'مدرسة 2',
+          school_name: 'خدمة 2',
           role: 'teacher',
           classes: [
             { class_id: 20, class_name: 'الصف الثاني' },
@@ -132,7 +132,7 @@ describe('Sync Controller', () => {
       const mockSchools = [
         {
           school_id: 1,
-          school_name: 'مدرسة فارغة',
+          school_name: 'خدمة فارغة',
           role: 'manager',
           classes: [],
         },
@@ -154,7 +154,7 @@ describe('Sync Controller', () => {
       const mockSchools = [
         {
           school_id: 1,
-          school_name: 'مدرسة',
+          school_name: 'خدمة',
           role: 'leader',
           classes: [{ class_id: 10, class_name: 'الصف' }],
         },

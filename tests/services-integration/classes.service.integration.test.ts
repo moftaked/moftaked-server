@@ -88,10 +88,10 @@ describe('Classes Service — DB Integration', () => {
     });
 
     it('should handle Arabic school names', async () => {
-      await classesService.createSchool('مدرسة الأحد');
+      await classesService.createSchool('خدمة الأحد');
 
       const schools = await classesService.getSchools();
-      const arabicSchool = schools.find((s) => s['school_name'] === 'مدرسة الأحد');
+      const arabicSchool = schools.find((s) => s['school_name'] === 'خدمة الأحد');
       expect(arabicSchool).toBeDefined();
     });
 
