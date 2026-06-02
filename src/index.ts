@@ -41,9 +41,11 @@ const isProduction = process.env['NODE_ENV'] === 'production';
 const allowedOrigins = isProduction
   ? [
       'https://moftaked.hopto.org',
+      'http://206.81.28.167:8080',
     ]
   : [
       'https://moftaked.hopto.org',
+      'http://206.81.28.167:8080',
       'http://localhost',
       'http://localhost:3000',
       'http://127.0.0.1',
