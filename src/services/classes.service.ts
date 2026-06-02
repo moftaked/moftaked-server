@@ -19,11 +19,12 @@ async function getUserJoinedSchoolsClasses(userId: number) {
   const classes: {
     school_id: number;
     school_name: string;
-    role: 'manager' | 'leader' | 'teacher';
+    role: 'admin' | 'manager' | 'leader' | 'teacher';
     classes: { class_id: number; class_name: string }[];
   }[] = [];
 
   const rolePriority: Record<string, number> = {
+    admin: 4,
     manager: 3,
     leader: 2,
     teacher: 1,
@@ -147,7 +148,6 @@ async function deleteSchool(schoolId: number) {
       // Delete classes
       await connection.query(`DELETE FROM classes WHERE school_id = ?`, [schoolId]);
     }
-
     await connection.query('DELETE FROM schools WHERE school_id = ?', [schoolId]);
     await connection.commit();
     dataVersionsService.touchClasses().catch(() => {});
@@ -185,13 +185,9 @@ async function deleteClass(classId: number) {
   const connection = await getConnection();
   try {
     await connection.beginTransaction();
-    // Delete events (and their occurrences + attendance via cascade)
     await connection.query('DELETE FROM events WHERE class_id = ?', [classId]);
-    // Delete roles
     await connection.query('DELETE FROM roles WHERE class_id = ?', [classId]);
-    // Delete person_class
     await connection.query('DELETE FROM person_class WHERE class_id = ?', [classId]);
-    // Delete the class
     await connection.query('DELETE FROM classes WHERE class_id = ?', [classId]);
     await connection.commit();
     dataVersionsService.touchClasses().catch(() => {});

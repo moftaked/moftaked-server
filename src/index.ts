@@ -38,6 +38,8 @@ const app = express();
 const port = 3000;
 const isProduction = process.env['NODE_ENV'] === 'production';
 
+app.set('trust proxy', 1);
+
 const allowedOrigins = isProduction
   ? [
       'https://moftaked.hopto.org',
@@ -55,8 +57,9 @@ const allowedOrigins = isProduction
 const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     if (isProduction) {
-      if (!origin) return callback(new Error('CORS: origin is required in production'));
+      if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
+      if (/^https?:\/\/[a-zA-Z0-9-]+\.lhr\.life(:\d+)?$/.test(origin)) return callback(null, true);
       callback(new Error(`CORS: origin ${origin} not allowed`));
     } else {
       if (!origin) return callback(null, true);

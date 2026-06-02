@@ -147,12 +147,12 @@ describe('Authorization Middleware', () => {
       expect(callArg.status || callArg.statusCode).toBe(StatusCodes.BAD_REQUEST);
     });
 
-    it('should read classId from params when whereIsClassId is "params"', () => {
+    it('should read classId from params when whereIsClassId is "params"', async () => {
       mockedAuthService.isInAnyClass.mockResolvedValue(true as never);
       mockReq.params = { classId: '5' };
 
       const middleware = isInClass('params', [Roles.leader, Roles.manager]);
-      middleware(mockReq as Request, mockRes as Response, mockNext);
+      await middleware(mockReq as Request, mockRes as Response, mockNext);
 
       expect(mockedAuthService.isInAnyClass).toHaveBeenCalledWith(
         1, // user.sub
@@ -173,13 +173,13 @@ describe('Authorization Middleware', () => {
       expect(callArg.status || callArg.statusCode).toBe(StatusCodes.BAD_REQUEST);
     });
 
-    it('should pass the correct user sub to isInAnyClass', () => {
+    it('should pass the correct user sub to isInAnyClass', async () => {
       mockedAuthService.isInAnyClass.mockResolvedValue(true as never);
       mockRes.locals = { user: { sub: 42, username: 'george' } };
       mockReq.body = { class_id: 10 };
 
       const middleware = isInClass('body', [Roles.manager]);
-      middleware(mockReq as Request, mockRes as Response, mockNext);
+      await middleware(mockReq as Request, mockRes as Response, mockNext);
 
       expect(mockedAuthService.isInAnyClass).toHaveBeenCalledWith(
         42,
@@ -188,12 +188,12 @@ describe('Authorization Middleware', () => {
       );
     });
 
-    it('should pass the authorized roles array correctly', () => {
+    it('should pass the authorized roles array correctly', async () => {
       mockedAuthService.isInAnyClass.mockResolvedValue(true as never);
       mockReq.body = { class_id: 1 };
 
       const middleware = isInClass('body', [Roles.leader, Roles.manager]);
-      middleware(mockReq as Request, mockRes as Response, mockNext);
+      await middleware(mockReq as Request, mockRes as Response, mockNext);
 
       expect(mockedAuthService.isInAnyClass).toHaveBeenCalledWith(
         1,

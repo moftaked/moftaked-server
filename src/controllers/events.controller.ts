@@ -70,7 +70,7 @@ export async function createSchoolOccurrences(req: Request, res: Response, next:
 
   // Verify the user is at least a leader in this school
   const role = await rolesService.getHighestRole(userId, undefined, body.schoolId);
-  if (role !== Roles.leader && role !== Roles.manager) {
+  if (role !== Roles.leader && role !== Roles.manager && role !== Roles.admin) {
     return next(createHttpError(StatusCodes.FORBIDDEN, 'You must be a leader or manager to create a new day for the school'));
   }
 

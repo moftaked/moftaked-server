@@ -48,13 +48,13 @@ describe('Roles Schemas', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should fail with invalid role "admin"', () => {
+    it('should pass with valid role "admin"', () => {
       const result = addRoleSchema.safeParse({
         user: 'tony',
         classId: 1,
         role: 'admin',
       });
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
     });
 
     it('should fail with invalid role "student"', () => {

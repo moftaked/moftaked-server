@@ -2,6 +2,7 @@ import { RowDataPacket } from "mysql2/promise";
 import { executeQuery } from "./database.service";
 import { Err, Ok } from "result2";
 import { StatusCodes } from "http-status-codes";
+import { Roles } from "../enums/roles.enum";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,6 +55,26 @@ async function getReportsAccess(accountId: number) {
      WHERE r.account_id = ?`,
     [accountId],
   );
+
+  // Admin bypass: full access to everything
+  if (roles.some(r => r['role'] === 'admin')) {
+    const allSchools = await executeQuery<RowDataPacket[]>(
+      'SELECT school_id, school_name FROM schools ORDER BY school_name',
+    );
+    const allClasses = await executeQuery<RowDataPacket[]>(
+      `SELECT c.class_id, c.class_name, s.school_name
+       FROM classes c INNER JOIN schools s USING(school_id)
+       ORDER BY s.school_name, c.class_name`,
+    );
+    return {
+      isManager: true,
+      isLeader: true,
+      isTeacher: true,
+      managedSchools: allSchools.map(s => ({ school_id: s['school_id'], school_name: s['school_name'] })),
+      leaderClasses: allClasses.map(c => ({ class_id: c['class_id'], class_name: c['class_name'], school_name: c['school_name'] })),
+      teacherClasses: allClasses.map(c => ({ class_id: c['class_id'], class_name: c['class_name'], school_name: c['school_name'] })),
+    };
+  }
 
   const isManager = roles.some(r => r['role'] === 'manager');
   const isLeader = roles.some(r => r['role'] === 'leader');
@@ -231,7 +252,20 @@ async function getSchoolsManagedByUser(account_id: number) {
     where account_id=? and role='manager'`,
     [account_id],
   );
-  if (results.length <= 0) return Err(StatusCodes.FORBIDDEN);
+
+  if (!results || results.length === 0) {
+    const adminCheck = await executeQuery<RowDataPacket[]>(
+      'SELECT role FROM roles WHERE account_id = ? AND role = ? LIMIT 1',
+      [account_id, Roles.admin],
+    );
+    if (adminCheck && adminCheck.length > 0) {
+      const allSchools = await executeQuery<school[]>(
+        'SELECT school_id, school_name FROM schools ORDER BY school_name',
+      );
+      return Ok(allSchools);
+    }
+    return Err(StatusCodes.FORBIDDEN);
+  }
 
   return Ok(results);
 }

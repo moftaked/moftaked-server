@@ -36,6 +36,10 @@ async function getHighestRole(
     classId ? [classId] : undefined,
     schoolId,
   );
+  const isAdmin = roles.some(role => role['role'] === 'admin');
+  if (isAdmin) {
+    return Roles.admin;
+  }
   const isManager = roles.some(role => role['role'] === 'manager');
   if (isManager) {
     return Roles.manager;

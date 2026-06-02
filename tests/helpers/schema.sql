@@ -104,7 +104,7 @@ CREATE TABLE `roles` (
   `role_id` int NOT NULL AUTO_INCREMENT,
   `account_id` int NOT NULL,
   `class_id` int NOT NULL,
-  `role` enum('teacher','leader','manager') NOT NULL,
+  `role` enum('teacher','leader','manager','admin') NOT NULL,
   `school_id` int NOT NULL,
   PRIMARY KEY (`role_id`),
   KEY `account_id` (`account_id`),

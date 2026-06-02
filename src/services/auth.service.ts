@@ -108,4 +108,9 @@ async function isManagerOfSchool(userId: number, schoolId: number) {
   return roles.some(role => role['role'] === Roles.manager);
 }
 
-export default { signIn, init, verify, isInAnyClass, hasRole, isManagerOfClass, isManagerOfSchool };
+async function isAdmin(userId: number) {
+  const roles = await rolesService.getRoles(userId);
+  return roles.some(role => role['role'] === Roles.admin);
+}
+
+export default { signIn, init, verify, isInAnyClass, hasRole, isManagerOfClass, isManagerOfSchool, isAdmin };
