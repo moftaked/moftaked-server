@@ -156,7 +156,7 @@ describe('Authorization Middleware', () => {
 
       expect(mockedAuthService.isInAnyClass).toHaveBeenCalledWith(
         1, // user.sub
-        ['5'] as any, // classId from params (string)
+        [5], // classId from params (converted to number by Number())
         [Roles.leader, Roles.manager],
       );
     });

@@ -683,6 +683,10 @@ describe('Reports Controller', () => {
   // ─── getPersonAttendanceHistory ────────────────────────────────────────
 
   describe('getPersonAttendanceHistory()', () => {
+    beforeEach(() => {
+      mockedReportsService.getUserPersonRole.mockResolvedValue('teacher' as never);
+    });
+
     it('should return 200 with history data', async () => {
       const mockData = {
         person_id: 7,
@@ -720,7 +724,24 @@ describe('Reports Controller', () => {
       expect(error.statusCode || error.status).toBe(StatusCodes.BAD_REQUEST);
     });
 
-    it('should call next with 404 when person not found', async () => {
+    it('should call next with 403 when user has no access to the person', async () => {
+      mockedReportsService.getUserPersonRole.mockReset();
+      mockedReportsService.getUserPersonRole.mockResolvedValue(null as never);
+
+      const req = {
+        params: { personId: '9999' },
+        query: {},
+      } as any;
+      const res = createMockRes();
+      const next = createMockNext();
+
+      await (getPersonAttendanceHistory as any)(req, res, next);
+
+      const error = (next as jest.Mock).mock.calls[0]![0] as any;
+      expect(error.statusCode || error.status).toBe(StatusCodes.FORBIDDEN);
+    });
+
+    it('should call next with 404 when person not found after access check passes', async () => {
       mockedReportsService.getPersonAttendanceHistory.mockResolvedValueOnce(null);
 
       const req = {
