@@ -17,6 +17,7 @@ export enum AuditEventType {
   SCHOOL_CREATED = 'SCHOOL_CREATED',
   SCHOOL_UPDATED = 'SCHOOL_UPDATED',
   SCHOOL_DELETED = 'SCHOOL_DELETED',
+  API_REQUEST = 'API_REQUEST',
 }
 
 interface AuditLogEntry {
@@ -60,7 +61,7 @@ async function log(entry: AuditLogEntry) {
 function createLogEntry(
   eventType: AuditEventType,
   options?: {
-    userId?: number;
+    userId?: number | null;
     details?: Record<string, unknown>;
     ipAddress?: string | null;
     userAgent?: string | null;

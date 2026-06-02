@@ -9,21 +9,11 @@ import path from 'path';
 import fs from 'fs';
 import { processAndSaveImage, deleteImageVariants } from '../middleware/image-upload.middleware';
 import dataVersionsService from '../services/data-versions.service';
-import auditLogService, { AuditEventType } from '../services/audit-log.service';
 
 export function createPerson(type: 'student' | 'teacher') {
   return async (req: Request, res: Response) => {
     const personData: CreatePersonDto = req.body;
-    const user = (req.res?.locals as authenticatedLocals)?.user;
-    const ipAddress = req.ip ?? req.socket.remoteAddress ?? null;
-    const userAgent = req.get('User-Agent') ?? null;
     await personsService.createPerson(type, personData);
-    auditLogService.log(auditLogService.createLogEntry(AuditEventType.PERSON_CREATED, {
-      userId: user?.sub,
-      details: { type, personName: personData.name, classId: personData.class_id },
-      ipAddress,
-      userAgent,
-    })).catch(() => {});
     res
       .status(StatusCodes.CREATED)
       .json({ success: true, message: 'Person created successfully' });
@@ -91,9 +81,6 @@ export function updatePerson(type: 'student' | 'teacher') {
     }
 
     const personData: UpdatePersonDto = req.body;
-    const user = (req.res?.locals as authenticatedLocals)?.user;
-    const ipAddress = req.ip ?? req.socket.remoteAddress ?? null;
-    const userAgent = req.get('User-Agent') ?? null;
 
     const person = await personsService.getPersonById(personId);
     if (!person || (Array.isArray(person) && person.length === 0)) {
@@ -114,12 +101,6 @@ export function updatePerson(type: 'student' | 'teacher') {
       });
       return;
     }
-    auditLogService.log(auditLogService.createLogEntry(AuditEventType.PERSON_UPDATED, {
-      userId: user?.sub,
-      details: { type, personId, updates: personData },
-      ipAddress,
-      userAgent,
-    })).catch(() => {});
     res
       .status(StatusCodes.OK)
       .json({ success: true, message: 'Person updated successfully' });
@@ -181,10 +162,6 @@ export function uploadPersonPhoto(type: 'student' | 'teacher') {
       return;
     }
 
-    const user = (req.res?.locals as authenticatedLocals)?.user;
-    const ipAddress = req.ip ?? req.socket.remoteAddress ?? null;
-    const userAgent = req.get('User-Agent') ?? null;
-
     try {
       const person = await personsService.getPersonById(personId) as any[];
       const oldPhotoLink = person?.[0]?.photo_link;
@@ -212,13 +189,6 @@ export function uploadPersonPhoto(type: 'student' | 'teacher') {
       if (touchKeys.length > 0) {
         dataVersionsService.touch(...touchKeys).catch(() => {});
       }
-
-      auditLogService.log(auditLogService.createLogEntry(AuditEventType.PHOTO_UPLOADED, {
-        userId: user?.sub,
-        details: { type, personId, filename: baseFilename },
-        ipAddress,
-        userAgent,
-      })).catch(() => {});
 
       res.status(StatusCodes.OK).json({
         success: true,

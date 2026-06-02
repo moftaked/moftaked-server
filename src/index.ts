@@ -7,6 +7,7 @@ import { DbConfig } from './types';
 import authService from './services/auth.service';
 import routes from './app.routes';
 import { handleError } from './middleware/errors.middleware';
+import { auditMiddleware } from './middleware/audit.middleware';
 import dataVersionsService from './services/data-versions.service';
 import auditLogService from './services/audit-log.service';
 
@@ -44,7 +45,9 @@ const allowedOrigins = isProduction
   : [
       'https://moftaked.hopto.org',
       'http://localhost',
+      'http://localhost:3000',
       'http://127.0.0.1',
+      'http://192.168.1.8',
     ];
 
 const corsOptions = {
@@ -67,11 +70,28 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 };
 
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'same-site' },
+}));
 app.use(cors(corsOptions));
 app.use(express.static('public'));
-app.use('/uploads', express.static('uploads'));
+app.use(
+  '/uploads',
+  (req, res, next): void => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(200);
+      return;
+    }
+    next();
+  },
+  express.static('uploads'),
+);
 app.use(express.json());
+
+app.use(auditMiddleware);
 
 routes.forEach(route => {
   app.use(route.path, route.router);

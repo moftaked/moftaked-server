@@ -6,7 +6,6 @@ import { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import { StatusCodes } from 'http-status-codes';
 import dataVersionsService from '../services/data-versions.service';
 import rolesService from '../services/roles.service';
-import auditLogService, { AuditEventType } from '../services/audit-log.service';
 import { authenticatedLocals } from '../middleware/authorization.middleware';
 import authService from '../services/auth.service';
 import createHttpError from 'http-errors';
@@ -18,15 +17,6 @@ export async function createAccount(req: Request, res: Response) {
     newUser.real_name,
     newUser.password,
   );
-  const user = (req.res?.locals as authenticatedLocals)?.user;
-  const ipAddress = req.ip ?? req.socket.remoteAddress ?? null;
-  const userAgent = req.get('User-Agent') ?? null;
-  auditLogService.log(auditLogService.createLogEntry(AuditEventType.ACCOUNT_CREATED, {
-    userId: user?.sub,
-    details: { createdUsername: newUser.username, createdRealName: newUser.real_name },
-    ipAddress,
-    userAgent,
-  })).catch(() => {});
   res.json(result);
 }
 
@@ -118,8 +108,6 @@ export async function getAllClasses(req: Request, res: Response) {
 export async function assignPersonToClass(req: Request, res: Response, next: NextFunction) {
   const { person_id, class_id, type } = req.body;
   const user = (req.res?.locals as authenticatedLocals)?.user;
-  const ipAddress = req.ip ?? req.socket.remoteAddress ?? null;
-  const userAgent = req.get('User-Agent') ?? null;
 
   if (!person_id || !class_id || !type) {
     res.status(StatusCodes.BAD_REQUEST).json({
@@ -184,13 +172,6 @@ export async function assignPersonToClass(req: Request, res: Response, next: Nex
       : dataVersionsService.classTeachersKey(class_id);
     dataVersionsService.touch(versionKey).catch(() => {});
 
-    auditLogService.log(auditLogService.createLogEntry(AuditEventType.ROLE_ASSIGNED, {
-      userId: user?.sub,
-      details: { person_id, class_id, type },
-      ipAddress,
-      userAgent,
-    })).catch(() => {});
-
     res.status(StatusCodes.CREATED).json({
       success: true,
       message: 'Person assigned to class successfully',
@@ -248,8 +229,6 @@ export async function deleteRoleById(req: Request, res: Response, next: NextFunc
 export async function unassignPersonFromClass(req: Request, res: Response, next: NextFunction) {
   const { person_id, class_id, type } = req.body;
   const user = (req.res?.locals as authenticatedLocals)?.user;
-  const ipAddress = req.ip ?? req.socket.remoteAddress ?? null;
-  const userAgent = req.get('User-Agent') ?? null;
 
   if (!person_id || !class_id || !type) {
     res.status(StatusCodes.BAD_REQUEST).json({
@@ -308,13 +287,6 @@ export async function unassignPersonFromClass(req: Request, res: Response, next:
       ? dataVersionsService.classStudentsKey(class_id)
       : dataVersionsService.classTeachersKey(class_id);
     dataVersionsService.touch(versionKey).catch(() => {});
-
-    auditLogService.log(auditLogService.createLogEntry(AuditEventType.ROLE_REMOVED, {
-      userId: user?.sub,
-      details: { person_id, class_id, type },
-      ipAddress,
-      userAgent,
-    })).catch(() => {});
 
     res.status(StatusCodes.OK).json({
       success: true,
