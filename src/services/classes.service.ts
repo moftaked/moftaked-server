@@ -212,6 +212,13 @@ async function getAllClassesWithSchool() {
   );
 }
 
+async function getClassSchoolId(classId: number) {
+  return await executeQuery<RowDataPacket[]>(
+    'SELECT school_id FROM classes WHERE class_id = ?',
+    [classId],
+  );
+}
+
 export default {
   getStudents,
   getTeachers,
@@ -224,4 +231,5 @@ export default {
   updateClass,
   deleteClass,
   getAllClassesWithSchool,
+  getClassSchoolId,
 };

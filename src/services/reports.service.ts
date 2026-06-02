@@ -850,6 +850,32 @@ async function getUserClassRole(accountId: number, classId: number) {
   return null;
 }
 
+async function getUserPersonRole(
+  accountId: number,
+  personId: number,
+  personType: string,
+) {
+  const personClasses = await executeQuery<RowDataPacket[]>(
+    `SELECT class_id FROM person_class WHERE person_id = ? AND type = ?`,
+    [personId, personType],
+  );
+
+  if (personClasses.length === 0) return null;
+
+  const classIds = personClasses.map(row => Number(row['class_id']));
+  const roles = await executeQuery<RowDataPacket[]>(
+    `SELECT role FROM roles WHERE account_id = ? AND class_id IN (${classIds.map(() => '?').join(', ')})`,
+    [accountId, ...classIds],
+  );
+
+  if (roles.length === 0) return null;
+
+  if (roles.some(r => r['role'] === 'manager')) return 'manager';
+  if (roles.some(r => r['role'] === 'leader')) return 'leader';
+  if (roles.some(r => r['role'] === 'teacher')) return 'teacher';
+  return null;
+}
+
 /**
  * Check if the user has manager access to a school.
  */
@@ -900,6 +926,7 @@ export default {
   getChronicAbsentees,
   getSchoolClassComparison,
   getUserClassRole,
+  getUserPersonRole,
   isSchoolManager,
   getUserAvailableDates,
 };

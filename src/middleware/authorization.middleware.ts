@@ -6,6 +6,7 @@ import { JwtPayload } from 'jsonwebtoken';
 import personsService from '../services/persons.service';
 import attendanceService from '../services/attendance.service';
 import eventsService from '../services/events.service';
+import classesService from '../services/classes.service';
 import createHttpError from 'http-errors';
 import { Err } from 'result2';
 
@@ -27,16 +28,28 @@ export function isInClass(
 ) {
   return async (req: Request, res: Response, next: NextFunction) => {
     const user: { sub: number; username: string } = res.locals['user'];
-    const classId =
-      whereIsClassId === 'body' ? req.body.class_id : req.params['classId'];
+    const classId = Number(
+      whereIsClassId === 'body' ? (req.body.class_id ?? req.body.classId) : req.params['classId']
+    );
     if (!classId) return next(createHttpError(StatusCodes.BAD_REQUEST, 'Class ID is required'));
+
     const authorized = await authService.isInAnyClass(
       user.sub,
       [classId],
       authorizedRoles,
     );
-    if (!authorized) return next(createHttpError(StatusCodes.FORBIDDEN, 'You are not authorized to access this class'));
-    next();
+    if (authorized) return next();
+
+    if (authorizedRoles.includes(Roles.manager)) {
+      const schoolRows = await classesService.getClassSchoolId(classId);
+      if (schoolRows.length > 0) {
+        const schoolId = schoolRows[0]!['school_id'];
+        const isManager = await authService.isManagerOfSchool(user.sub, schoolId);
+        if (isManager) return next();
+      }
+    }
+
+    return next(createHttpError(StatusCodes.FORBIDDEN, 'You are not authorized to access this class'));
   };
 }
 
@@ -83,11 +96,20 @@ export function isInAttendanceEventClass(authorizedRoles: Roles[]) {
     if (classId === null) {
       return next(createHttpError(StatusCodes.NOT_FOUND, 'Event occurrence not found'));
     }
+
     const authorized = await authService.isInAnyClass(user.sub, [classId], authorizedRoles);
-    if (!authorized) {
-      return next(createHttpError(StatusCodes.FORBIDDEN, 'You are not authorized to access this attendance'));
+    if (authorized) return next();
+
+    if (authorizedRoles.includes(Roles.manager)) {
+      const schoolRows = await classesService.getClassSchoolId(classId);
+      if (schoolRows.length > 0) {
+        const schoolId = schoolRows[0]!['school_id'];
+        const isManager = await authService.isManagerOfSchool(user.sub, schoolId);
+        if (isManager) return next();
+      }
     }
-    next();
+
+    return next(createHttpError(StatusCodes.FORBIDDEN, 'You are not authorized to access this attendance'));
   };
 }
 
@@ -102,10 +124,19 @@ export function isInEventClass(authorizedRoles: Roles[]) {
     if (classId === null) {
       return next(createHttpError(StatusCodes.NOT_FOUND, 'Event not found'));
     }
+
     const authorized = await authService.isInAnyClass(user.sub, [classId], authorizedRoles);
-    if (!authorized) {
-      return next(createHttpError(StatusCodes.FORBIDDEN, 'You are not authorized to access this event'));
+    if (authorized) return next();
+
+    if (authorizedRoles.includes(Roles.manager)) {
+      const schoolRows = await classesService.getClassSchoolId(classId);
+      if (schoolRows.length > 0) {
+        const schoolId = schoolRows[0]!['school_id'];
+        const isManager = await authService.isManagerOfSchool(user.sub, schoolId);
+        if (isManager) return next();
+      }
     }
-    next();
+
+    return next(createHttpError(StatusCodes.FORBIDDEN, 'You are not authorized to access this event'));
   };
 }

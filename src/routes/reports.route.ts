@@ -13,7 +13,7 @@ import {
   getChronicAbsentees,
   getSchoolClassComparison,
 } from "../controllers/reports.controller";
-import { hasRole, isAuthenticated, isInClass, isInAttendanceEventClass, isInPersonClass } from "../middleware/authorization.middleware";
+import { hasRole, isAuthenticated, isInClass, isInAttendanceEventClass, isInEventClass } from "../middleware/authorization.middleware";
 import { Roles } from "../enums/roles.enum";
 import { sensitiveOperationRateLimiter } from "../middleware/rate-limiting.middleware";
 
@@ -73,8 +73,8 @@ reportsRouter.get("/class/:classId/summary", isInClass('params', [Roles.teacher,
 
 reportsRouter.get("/class/:classId/dates", isInClass('params', [Roles.teacher, Roles.leader, Roles.manager]), getClassAvailableDates);
 
-reportsRouter.get("/event/:eventId/trends", isInAttendanceEventClass([Roles.teacher, Roles.leader, Roles.manager]), getEventAttendanceTrends);
+reportsRouter.get("/event/:eventId/trends", isInEventClass([Roles.teacher, Roles.leader, Roles.manager]), getEventAttendanceTrends);
 
-reportsRouter.get("/person/:personId/history", isInPersonClass('personId', 'student', [Roles.teacher, Roles.leader, Roles.manager]), getPersonAttendanceHistory);
+reportsRouter.get("/person/:personId/history", getPersonAttendanceHistory);
 
 export default reportsRouter;

@@ -1,5 +1,6 @@
 import express from 'express';
-import { isAuthenticated } from '../middleware/authorization.middleware';
+import { isAuthenticated, hasRole } from '../middleware/authorization.middleware';
+import { Roles } from '../enums/roles.enum';
 import { validateData } from '../middleware/validation.middleware';
 import { createDistrictSchema } from '../schemas/districts.schemas';
 import {
@@ -11,7 +12,7 @@ const districtsRouter = express.Router();
 
 districtsRouter.use(isAuthenticated());
 
-districtsRouter.post('/', validateData(createDistrictSchema), createDistrict);
+districtsRouter.post('/', hasRole([Roles.manager]), validateData(createDistrictSchema), createDistrict);
 
 districtsRouter.get('/', getDistricts);
 

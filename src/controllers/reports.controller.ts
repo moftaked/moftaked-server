@@ -290,6 +290,17 @@ export async function getPersonAttendanceHistory(
     const personType = req.query.type || "student";
     const limit = parseInt(req.query.limit || "20");
 
+    const role = await reportsService.getUserPersonRole(
+      res.locals.user.sub,
+      personId,
+      personType,
+    );
+    if (!role) {
+      return next(
+        createHttpError(StatusCodes.FORBIDDEN, "No access to this person"),
+      );
+    }
+
     const data = await reportsService.getPersonAttendanceHistory(
       personId,
       personType,

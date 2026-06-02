@@ -44,7 +44,7 @@ personsRouter.post(
 
 personsRouter.get('/students', searchByName('student'));
 
-personsRouter.get('/teachers', hasRole([Roles.teacher, Roles.manager]), searchByName('teacher'));
+personsRouter.get('/teachers', hasRole([Roles.leader, Roles.manager]), searchByName('teacher'));
 
 personsRouter.get(
   '/students/:studentId',

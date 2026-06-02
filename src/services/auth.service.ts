@@ -17,9 +17,15 @@ function init(secret: string) {
   jwtSecret = secret;
   const privateKeyPath = process.env['JWT_PRIVATE_KEY_PATH'];
   const publicKeyPath = process.env['JWT_PUBLIC_KEY_PATH'];
+  const defaultPrivateKeyPath = path.resolve(__dirname, '../../private-key.pem');
+  const defaultPublicKeyPath = path.resolve(__dirname, '../../public-key.pem');
+
   if (privateKeyPath && publicKeyPath) {
     jwtPrivateKey = fs.readFileSync(path.resolve(privateKeyPath), 'utf8');
     jwtPublicKey = fs.readFileSync(path.resolve(publicKeyPath), 'utf8');
+  } else if (fs.existsSync(defaultPrivateKeyPath) && fs.existsSync(defaultPublicKeyPath)) {
+    jwtPrivateKey = fs.readFileSync(defaultPrivateKeyPath, 'utf8');
+    jwtPublicKey = fs.readFileSync(defaultPublicKeyPath, 'utf8');
   }
 }
 
@@ -28,7 +34,7 @@ async function signIn(username: string, password: string) {
     'select account_id, username, password, real_name from accounts where username = ?',
     [username],
   );
-  if (!userTableResults[0]) return Err(StatusCodes.NOT_FOUND);
+  if (!userTableResults[0]) return Err(StatusCodes.UNAUTHORIZED);
   const user = userTableResults[0];
   if ((await compare(password, user.password)) === false) {
     return Err(StatusCodes.UNAUTHORIZED);

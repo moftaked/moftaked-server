@@ -27,13 +27,14 @@ eventsRouter.get('/:eventId/occurrences', isInEventClass([Roles.teacher, Roles.l
 eventsRouter.post(
   '/occurrences/school',
   generalApiRateLimiter,
-  hasRole([Roles.manager]),
+  hasRole([Roles.leader, Roles.manager]),
   validateData(SchoolOccurrenceSchema),
   createSchoolOccurrences,
 );
 eventsRouter.post(
   '/occurrences',
   generalApiRateLimiter,
+  hasRole([Roles.leader, Roles.manager]),
   validateData(EventOccurrenceSchema),
   createEventOccurrence,
 );
