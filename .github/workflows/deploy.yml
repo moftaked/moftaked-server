@@ -9,7 +9,9 @@ jobs:
       - name: Pull latest code in deployment directory
         run: |
           cd /opt/moftaked/api
+          git stash --include-untracked
           git pull origin express
+          git stash pop || true
       - name: Rebuild and restart API container
         run: |
           docker compose -f /opt/moftaked/docker/docker-compose.prod.yml up -d --build api
