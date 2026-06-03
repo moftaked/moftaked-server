@@ -935,6 +935,8 @@ async function getUserPersonRole(
  * Check if the user has manager access to a school.
  */
 async function isSchoolManager(accountId: number, schoolId: number) {
+  if (await accountsService.isAdmin(accountId)) return true;
+
   const roles = await executeQuery<RowDataPacket[]>(
     `SELECT role FROM roles WHERE account_id = ? AND school_id = ? AND role = 'manager'`,
     [accountId, schoolId],

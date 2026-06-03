@@ -1305,6 +1305,7 @@ describe('Reports Service', () => {
 
   describe('isSchoolManager()', () => {
     it('should return true when user is a manager for the school', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([{ role: 'manager' }] as any);
 
       const result = await reportsService.isSchoolManager(100, 1);
@@ -1313,6 +1314,7 @@ describe('Reports Service', () => {
     });
 
     it('should return false when user is not a manager for the school', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
       const result = await reportsService.isSchoolManager(100, 1);
@@ -1321,20 +1323,22 @@ describe('Reports Service', () => {
     });
 
     it('should pass accountId and schoolId to the query', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
       await reportsService.isSchoolManager(42, 5);
 
-      const params = mockedExecuteQuery.mock.calls[0]![1];
+      const params = mockedExecuteQuery.mock.calls[1]![1];
       expect(params).toEqual([42, 5]);
     });
 
     it('should filter by role = manager in the query', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
       await reportsService.isSchoolManager(1, 1);
 
-      const queryStr = mockedExecuteQuery.mock.calls[0]![0] as string;
+      const queryStr = mockedExecuteQuery.mock.calls[1]![0] as string;
       expect(queryStr).toContain("role = 'manager'");
     });
 
@@ -1342,6 +1346,14 @@ describe('Reports Service', () => {
       mockedExecuteQuery.mockRejectedValueOnce(new Error('DB error') as never);
 
       await expect(reportsService.isSchoolManager(1, 1)).rejects.toThrow('DB error');
+    });
+
+    it('should return true when user is an admin', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 1 }] as any);
+
+      const result = await reportsService.isSchoolManager(100, 1);
+
+      expect(result).toBe(true);
     });
   });
 
