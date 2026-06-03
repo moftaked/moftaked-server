@@ -107,6 +107,7 @@ async function isInAnyClass(
   classIds: number[],
   authorizedRoles: Roles[],
 ) {
+  if (await isAdmin(userId)) return true;
   const roles = await rolesService.getRoles(userId, classIds);
   return roles.some(role => {
     return (
@@ -117,6 +118,7 @@ async function isInAnyClass(
 }
 
 async function hasRole(userId: number, requiredRoles: Roles[]) {
+  if (await isAdmin(userId)) return true;
   const roles = await rolesService.getRoles(userId);
   return roles
   .some(userRole => requiredRoles
@@ -124,11 +126,13 @@ async function hasRole(userId: number, requiredRoles: Roles[]) {
 }
 
 async function isManagerOfClass(userId: number, classId: number) {
+  if (await isAdmin(userId)) return true;
   const roles = await rolesService.getRoles(userId, [classId]);
   return roles.some(role => role['role'] === Roles.manager);
 }
 
 async function isManagerOfSchool(userId: number, schoolId: number) {
+  if (await isAdmin(userId)) return true;
   const roles = await rolesService.getRoles(userId, undefined, schoolId);
   return roles.some(role => role['role'] === Roles.manager);
 }

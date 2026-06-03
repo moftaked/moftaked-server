@@ -33,7 +33,6 @@ export function isInClass(
       whereIsClassId === 'body' ? (req.body.class_id ?? req.body.classId) : req.params['classId']
     );
     if (!classId) return next(createHttpError(StatusCodes.BAD_REQUEST, 'Class ID is required'));
-    if (await authService.isAdmin(user.sub)) return next();
 
     const authorized = await authService.isInAnyClass(
       user.sub,
@@ -62,7 +61,6 @@ export function isInPersonClass(
 ) {
   return async (req: Request, res: Response, next: NextFunction) => {
     const user: { sub: number; username: string } = res.locals['user'];
-    if (await authService.isAdmin(user.sub)) return next();
 
     const personId = parseInt(req.params[urlParamName] || '', 10);
     if (isNaN(personId)) throw new Error(`${StatusCodes.BAD_REQUEST}`);
@@ -83,7 +81,6 @@ export function isInPersonClass(
 export function hasRole(requiredRoles: Roles[]) {
   return async (_req: Request, res: Response, next: NextFunction) => {
     const user: { sub: number; username: string } = res.locals['user'];
-    if (await authService.isAdmin(user.sub)) return next();
     const authorized = await authService.hasRole(user.sub, requiredRoles);
     if (!authorized) return next(createHttpError(StatusCodes.FORBIDDEN, 'You are not authorized to perform this action'));
     next();
@@ -93,7 +90,6 @@ export function hasRole(requiredRoles: Roles[]) {
 export function isInAttendanceEventClass(authorizedRoles: Roles[]) {
   return async (req: Request, res: Response, next: NextFunction) => {
     const user: { sub: number; username: string } = res.locals['user'];
-    if (await authService.isAdmin(user.sub)) return next();
 
     const eventOccurrenceId = parseInt(req.params['eventOccurrenceId'] || '', 10);
     if (isNaN(eventOccurrenceId)) {
@@ -123,7 +119,6 @@ export function isInAttendanceEventClass(authorizedRoles: Roles[]) {
 export function isInEventClass(authorizedRoles: Roles[]) {
   return async (req: Request, res: Response, next: NextFunction) => {
     const user: { sub: number; username: string } = res.locals['user'];
-    if (await authService.isAdmin(user.sub)) return next();
 
     const eventId = parseInt(req.params['eventId'] || '', 10);
     if (isNaN(eventId)) {
