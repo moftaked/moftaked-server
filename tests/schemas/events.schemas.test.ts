@@ -273,5 +273,20 @@ describe('Events Schemas', () => {
       const result = SchoolOccurrenceSchema.safeParse({ schoolId: undefined });
       expect(result.success).toBe(false);
     });
+
+    it('should pass with valid date format (yyyy-mm-dd)', () => {
+      const result = SchoolOccurrenceSchema.safeParse({ schoolId: 1, date: '2026-06-03' });
+      expect(result.success).toBe(true);
+    });
+
+    it('should pass when date is omitted (optional)', () => {
+      const result = SchoolOccurrenceSchema.safeParse({ schoolId: 1 });
+      expect(result.success).toBe(true);
+    });
+
+    it('should fail with invalid date format', () => {
+      const result = SchoolOccurrenceSchema.safeParse({ schoolId: 1, date: '03-06-2026' });
+      expect(result.success).toBe(false);
+    });
   });
 });

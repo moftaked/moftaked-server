@@ -130,6 +130,7 @@ async function getEventOccurrences(eventId: number) {
 async function createSchoolOccurrences(
   userId: number,
   schoolId: number,
+  date?: string,
 ): Promise<number[]> {
   // 1. Find all events in classes the user has roles/access in for this school
   const events = await executeQuery<RowDataPacket[]>(
@@ -164,11 +165,11 @@ async function createSchoolOccurrences(
   if (events.length === 0) return [];
 
   const eventIds: number[] = events.map((e) => e['event_id'] as number);
-  const today = new Date().toISOString().slice(0, 10); // yyyy-mm-dd
+  const targetDate = date ?? new Date().toISOString().slice(0, 10); // yyyy-mm-dd
 
   // 2. Bulk-insert occurrences (IGNORE skips existing ones)
   const placeholders = eventIds.map(() => '(?, ?)').join(', ');
-  const values = eventIds.flatMap((id) => [id, today]);
+  const values = eventIds.flatMap((id) => [id, targetDate]);
 
   const connection = await getConnection();
   try {

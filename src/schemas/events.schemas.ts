@@ -17,6 +17,7 @@ export type EventDto = z.infer<typeof EventSchema>;
 
 export const SchoolOccurrenceSchema = z.object({
   schoolId: z.number().int().positive(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (yyyy-mm-dd)').optional(),
 });
 
 export type SchoolOccurrenceDto = z.infer<typeof SchoolOccurrenceSchema>;

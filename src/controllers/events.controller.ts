@@ -81,6 +81,6 @@ export async function createSchoolOccurrences(req: Request, res: Response, next:
     return next(createHttpError(StatusCodes.FORBIDDEN, 'You must be a leader or manager to create a new day for the school'));
   }
 
-  const eventIds = await eventsService.createSchoolOccurrences(userId, body.schoolId);
+  const eventIds = await eventsService.createSchoolOccurrences(userId, body.schoolId, body.date);
   res.status(StatusCodes.CREATED).json({ success: true, eventIds });
 }

@@ -751,6 +751,17 @@ describe('Events Service', () => {
       expect(dateParam).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     });
 
+    it('should use the provided custom date if passed', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ event_id: 1 }] as any);
+
+      await eventsService.createSchoolOccurrences(100, 5, '2026-12-25');
+
+      const executeCall = mockConnection.execute.mock.calls[0]!;
+      const params = executeCall[1] as any[];
+      const dateParam = params[1] as string;
+      expect(dateParam).toBe('2026-12-25');
+    });
+
     it('should join events with classes and check roles/accounts', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
