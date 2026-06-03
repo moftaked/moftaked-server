@@ -2,7 +2,31 @@ import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals
 
 // Mock dependencies before importing the service
 jest.mock('../../src/services/database.service');
-jest.mock('../../src/services/data-versions.service');
+jest.mock('../../src/services/data-versions.service', () => {
+  return {
+    __esModule: true,
+    default: {
+      ensureTable: jest.fn().mockResolvedValue(undefined as never),
+      touch: jest.fn().mockReturnValue(Promise.resolve() as never),
+      touchClassStudents: jest.fn().mockReturnValue(Promise.resolve() as never),
+      touchClassTeachers: jest.fn().mockReturnValue(Promise.resolve() as never),
+      touchClassEvents: jest.fn().mockReturnValue(Promise.resolve() as never),
+      touchEventOccurrences: jest.fn().mockReturnValue(Promise.resolve() as never),
+      touchOccurrenceAttendance: jest.fn().mockReturnValue(Promise.resolve() as never),
+      touchDistricts: jest.fn().mockReturnValue(Promise.resolve() as never),
+      touchClasses: jest.fn().mockReturnValue(Promise.resolve() as never),
+      getTimestamps: jest.fn().mockResolvedValue({} as never),
+      getTimestampsForUser: jest.fn().mockResolvedValue({} as never),
+      classStudentsKey: jest.fn((id: number) => `class_${id}_students`),
+      classTeachersKey: jest.fn((id: number) => `class_${id}_teachers`),
+      classEventsKey: jest.fn((id: number) => `class_${id}_events`),
+      eventOccurrencesKey: jest.fn((id: number) => `event_${id}_occurrences`),
+      occurrenceAttendanceKey: jest.fn(),
+      DISTRICTS_KEY: 'districts',
+      CLASSES_KEY: 'classes',
+    },
+  };
+});
 
 import eventsService from '../../src/services/events.service';
 import { executeQuery, getConnection } from '../../src/services/database.service';
@@ -205,8 +229,8 @@ describe('Events Service', () => {
 
     it('should not throw if touchClassEvents rejects (caught with .catch)', async () => {
       mockedExecuteQuery.mockResolvedValueOnce({} as any);
-      mockedDataVersionsService.touchClassEvents.mockReturnValue(
-        Promise.reject(new Error('touch error')) as any,
+      mockedDataVersionsService.touchClassEvents.mockRejectedValue(
+        new Error('touch error') as never,
       );
 
       await expect(
@@ -295,8 +319,8 @@ describe('Events Service', () => {
       mockedExecuteQuery
         .mockResolvedValueOnce([{ class_id: 10 }] as any)
         .mockResolvedValueOnce({} as any);
-      mockedDataVersionsService.touchClassEvents.mockReturnValue(
-        Promise.reject(new Error('touch fail')) as any,
+      mockedDataVersionsService.touchClassEvents.mockRejectedValue(
+        new Error('touch fail') as never,
       );
 
       await expect(
@@ -350,10 +374,9 @@ describe('Events Service', () => {
       expect(mockedDataVersionsService.touchClassEvents).toHaveBeenCalledWith(10);
     });
 
-    it('should NOT touch class events version when event not found', async () => {
+    it('should NOT touch class events version when event not found (no rows)', async () => {
       mockedExecuteQuery
-        .mockResolvedValueOnce([] as any) // no class_id found
-        .mockResolvedValueOnce({} as any);
+        .mockResolvedValueOnce([] as any); // no rows — event not found
 
       await eventsService.deleteEvent(999);
 
@@ -364,8 +387,8 @@ describe('Events Service', () => {
       mockedExecuteQuery
         .mockResolvedValueOnce([{ class_id: 10 }] as any)
         .mockResolvedValueOnce({} as any);
-      mockedDataVersionsService.touchClassEvents.mockReturnValue(
-        Promise.reject(new Error('touch fail')) as any,
+      mockedDataVersionsService.touchClassEvents.mockRejectedValue(
+        new Error('touch fail') as never,
       );
 
       await expect(eventsService.deleteEvent(5)).resolves.toBeUndefined();
@@ -413,8 +436,8 @@ describe('Events Service', () => {
 
     it('should not throw if touchEventOccurrences rejects (caught with .catch)', async () => {
       mockedExecuteQuery.mockResolvedValueOnce({} as any);
-      mockedDataVersionsService.touchEventOccurrences.mockReturnValue(
-        Promise.reject(new Error('touch fail')) as any,
+      mockedDataVersionsService.touchEventOccurrences.mockRejectedValue(
+        new Error('touch fail') as never,
       );
 
       await expect(
@@ -473,8 +496,8 @@ describe('Events Service', () => {
 
     it('should not throw if touchEventOccurrences rejects (caught with .catch)', async () => {
       mockedExecuteQuery.mockResolvedValueOnce({} as any);
-      mockedDataVersionsService.touchEventOccurrences.mockReturnValue(
-        Promise.reject(new Error('touch fail')) as any,
+      mockedDataVersionsService.touchEventOccurrences.mockRejectedValue(
+        new Error('touch fail') as never,
       );
 
       await expect(
@@ -577,7 +600,7 @@ describe('Events Service', () => {
       expect(queryStr).toContain('account_id');
       expect(queryStr).toContain('school_id');
       const params = mockedExecuteQuery.mock.calls[0]![1];
-      expect(params).toEqual([100, 5]);
+      expect(params).toEqual([5, 100, 100, 100, 5, 100]);
     });
 
     it('should return empty array when no events exist', async () => {
@@ -698,8 +721,8 @@ describe('Events Service', () => {
 
     it('should not throw if touch rejects (caught with .catch)', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([{ event_id: 1 }] as any);
-      mockedDataVersionsService.touch.mockReturnValue(
-        Promise.reject(new Error('touch fail')) as any,
+      mockedDataVersionsService.touch.mockRejectedValue(
+        new Error('touch fail') as never,
       );
 
       await expect(
@@ -728,14 +751,15 @@ describe('Events Service', () => {
       expect(dateParam).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     });
 
-    it('should join events with classes and roles tables', async () => {
+    it('should join events with classes and check roles/accounts', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
       await eventsService.createSchoolOccurrences(100, 5);
 
       const queryStr = mockedExecuteQuery.mock.calls[0]![0] as string;
       expect(queryStr).toContain('INNER JOIN classes');
-      expect(queryStr).toContain('INNER JOIN roles');
+      expect(queryStr).toContain('roles');
+      expect(queryStr).toContain('accounts');
     });
   });
 });

@@ -131,15 +131,34 @@ async function createSchoolOccurrences(
   userId: number,
   schoolId: number,
 ): Promise<number[]> {
-  // 1. Find all events in classes the user has roles in for this school
+  // 1. Find all events in classes the user has roles/access in for this school
   const events = await executeQuery<RowDataPacket[]>(
     `SELECT DISTINCT e.event_id
      FROM events e
      INNER JOIN classes c ON e.class_id = c.class_id
-     INNER JOIN roles r ON r.class_id = c.class_id
-     WHERE r.account_id = ?
-       AND c.school_id = ?`,
-    [userId, schoolId],
+     WHERE c.school_id = ?
+       AND (
+         -- User is admin
+         EXISTS (
+           SELECT 1 FROM accounts a
+           WHERE a.account_id = ? AND a.is_admin = 1
+         )
+         OR EXISTS (
+           SELECT 1 FROM roles r
+           WHERE r.account_id = ? AND r.role = 'admin'
+         )
+         -- User is manager of this school
+         OR EXISTS (
+           SELECT 1 FROM roles r
+           WHERE r.account_id = ? AND r.school_id = ? AND r.role = 'manager'
+         )
+         -- User has a role in this specific class
+         OR EXISTS (
+           SELECT 1 FROM roles r
+           WHERE r.account_id = ? AND r.class_id = c.class_id
+         )
+       )`,
+    [schoolId, userId, userId, userId, schoolId, userId],
   );
 
   if (events.length === 0) return [];
