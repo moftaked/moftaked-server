@@ -175,9 +175,63 @@ describe('Events Controller', () => {
         json: jest.fn(),
       } as unknown as Response;
 
-      await createEventOccurrence(req, res);
+      const next = jest.fn();
+
+      await createEventOccurrence(req, res, next);
 
       expect(mockedEventsService.createEventOccurrence).toHaveBeenCalledWith(1, '2025-07-20');
+    });
+
+    it('should call next with a 409 Conflict error if eventsService.createEventOccurrence throws a duplicate entry error', async () => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2025-07-20T10:30:00Z'));
+      const req = {
+        body: {
+          eventId: 1,
+        },
+      } as any as Request;
+
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as unknown as Response;
+
+      const next = jest.fn();
+
+      const dupError = new Error('Duplicate entry');
+      (dupError as any).code = 'ER_DUP_ENTRY';
+      mockedEventsService.createEventOccurrence.mockRejectedValueOnce(dupError);
+
+      await createEventOccurrence(req, res, next);
+
+      expect(next).toHaveBeenCalled();
+      const passedError = next.mock.calls[0]![0] as any;
+      expect(passedError.status).toBe(StatusCodes.CONFLICT);
+      expect(passedError.message).toBe('Occurrence already exists');
+    });
+
+    it('should call next with the original error if a non-duplicate error is thrown', async () => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2025-07-20T10:30:00Z'));
+      const req = {
+        body: {
+          eventId: 1,
+        },
+      } as any as Request;
+
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as unknown as Response;
+
+      const next = jest.fn();
+
+      const dbError = new Error('Some DB error');
+      mockedEventsService.createEventOccurrence.mockRejectedValueOnce(dbError);
+
+      await createEventOccurrence(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(dbError);
     });
   });
 
