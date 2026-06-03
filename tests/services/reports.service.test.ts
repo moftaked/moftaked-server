@@ -654,7 +654,7 @@ describe('Reports Service', () => {
       await reportsService.getEventAttendanceTrends(42, 'teacher');
 
       const params = mockedExecuteQuery.mock.calls[0]![1];
-      expect(params).toEqual([42, 'teacher', 10]);
+      expect(params).toEqual([42, 'teacher']);
     });
 
     it('should default to limit of 10', async () => {
@@ -664,7 +664,7 @@ describe('Reports Service', () => {
       await reportsService.getEventAttendanceTrends(5, 'student');
 
       const queryStr = mockedExecuteQuery.mock.calls[0]![0] as string;
-      expect(queryStr).toContain('LIMIT ?');
+      expect(queryStr).toContain('LIMIT 10');
     });
 
     it('should use custom limit when provided', async () => {
@@ -674,7 +674,7 @@ describe('Reports Service', () => {
       await reportsService.getEventAttendanceTrends(5, 'student', 20);
 
       const queryStr = mockedExecuteQuery.mock.calls[0]![0] as string;
-      expect(queryStr).toContain('LIMIT ?');
+      expect(queryStr).toContain('LIMIT 20');
     });
 
     it('should default event info fields to empty when event not found', async () => {
@@ -950,7 +950,7 @@ describe('Reports Service', () => {
       await reportsService.getClassAvailableDates(42);
 
       const params = mockedExecuteQuery.mock.calls[0]![1];
-      expect(params).toEqual([42, 30]);
+      expect(params).toEqual([42]);
     });
 
     it('should order by date DESC', async () => {
@@ -969,7 +969,7 @@ describe('Reports Service', () => {
       await reportsService.getClassAvailableDates(10);
 
       const queryStr = mockedExecuteQuery.mock.calls[0]![0] as string;
-      expect(queryStr).toContain('LIMIT ?');
+      expect(queryStr).toContain('LIMIT 30');
     });
 
     it('should use custom limit when provided', async () => {
@@ -978,7 +978,7 @@ describe('Reports Service', () => {
       await reportsService.getClassAvailableDates(10, 50);
 
       const queryStr = mockedExecuteQuery.mock.calls[0]![0] as string;
-      expect(queryStr).toContain('LIMIT ?');
+      expect(queryStr).toContain('LIMIT 50');
     });
 
     it('should group by occurence_date', async () => {

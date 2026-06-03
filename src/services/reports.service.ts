@@ -444,9 +444,9 @@ async function getEventAttendanceTrends(
       pc.person_id = a.person_id
     GROUP BY eo.event_occurence_id, eo.occurence_date
     ORDER BY eo.occurence_date DESC
-    LIMIT ?;
+    LIMIT ${Number(limit)};
     `,
-    [eventId, personType, Number(limit)],
+    [eventId, personType],
   );
 
   // Get event info
@@ -643,9 +643,9 @@ async function getPersonAttendanceHistory(
         a.person_id = ?
       WHERE eo.event_id = ?
       ORDER BY eo.occurence_date DESC
-      LIMIT ?;
+      LIMIT ${Number(limit)};
       `,
-      [personId, event['event_id'], Number(limit)],
+      [personId, event['event_id']],
     );
 
     const totalOccurrences = history.length;
@@ -705,9 +705,9 @@ async function getClassAvailableDates(classId: number, limit: number = 30) {
     WHERE e.class_id = ?
     GROUP BY eo.occurence_date
     ORDER BY eo.occurence_date DESC
-    LIMIT ?;
+    LIMIT ${Number(limit)};
     `,
-    [classId, Number(limit)],
+    [classId],
   );
   return results;
 }
