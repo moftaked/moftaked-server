@@ -44,9 +44,9 @@ export async function deleteEvent(req: Request, res: Response, next: NextFunctio
 
 export async function createEventOccurrence(req: Request, res: Response, next: NextFunction) {
   const body: EventOccurrenceDto = req.body;
-  const today = new Date().toISOString().slice(0, 10); // yyyy-mm-dd
+  const targetDate = body.date ?? new Date().toISOString().slice(0, 10); // yyyy-mm-dd
   try {
-    await eventsService.createEventOccurrence(body.eventId, today);
+    await eventsService.createEventOccurrence(body.eventId, targetDate);
     res.status(StatusCodes.CREATED).json({ success: true });
   } catch (error: any) {
     if (error && (error.code === 'ER_DUP_ENTRY' || error.errno === 1062)) {

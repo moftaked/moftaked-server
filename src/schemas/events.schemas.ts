@@ -3,6 +3,7 @@ import { eventTypes } from '../enums/eventTypes.enum';
 
 export const EventOccurrenceSchema = z.object({
   eventId: z.number().int().positive(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (yyyy-mm-dd)').optional(),
 });
 
 export type EventOccurrenceDto = z.infer<typeof EventOccurrenceSchema>;
