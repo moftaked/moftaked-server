@@ -889,6 +889,8 @@ async function getSchoolClassComparison(schoolId: number, date: string) {
  * Returns null if no access.
  */
 async function getUserClassRole(accountId: number, classId: number) {
+  if (await accountsService.isAdmin(accountId)) return 'manager';
+
   const roles = await executeQuery<RowDataPacket[]>(
     `SELECT role FROM roles WHERE account_id = ? AND class_id = ?`,
     [accountId, classId],

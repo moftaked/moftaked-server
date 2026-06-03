@@ -63,10 +63,14 @@ async function getAccountId(username: string, connection?: PoolConnection) {
 
 async function isAdmin(accountId: number) {
   const rows = await executeQuery<RowDataPacket[]>(
-    'select is_admin from accounts where account_id = ? limit 1',
+    `SELECT a.is_admin, r.role 
+     FROM accounts a 
+     LEFT JOIN roles r ON a.account_id = r.account_id AND r.role = 'admin' 
+     WHERE a.account_id = ? 
+     LIMIT 1`,
     [accountId],
   );
-  return rows[0]?.['is_admin'] === 1;
+  return rows[0]?.['is_admin'] === 1 || rows[0]?.['role'] === 'admin';
 }
 
 async function setAdmin(user: number | string, admin: boolean) {

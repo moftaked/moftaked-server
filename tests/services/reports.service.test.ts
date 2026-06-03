@@ -1205,6 +1205,7 @@ describe('Reports Service', () => {
 
   describe('getUserClassRole()', () => {
     it('should return "manager" when user has manager role', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([{ role: 'manager' }] as any);
 
       const result = await reportsService.getUserClassRole(100, 10);
@@ -1213,6 +1214,7 @@ describe('Reports Service', () => {
     });
 
     it('should return "leader" when user has leader role', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([{ role: 'leader' }] as any);
 
       const result = await reportsService.getUserClassRole(100, 10);
@@ -1221,6 +1223,7 @@ describe('Reports Service', () => {
     });
 
     it('should return "teacher" when user has teacher role', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([{ role: 'teacher' }] as any);
 
       const result = await reportsService.getUserClassRole(100, 10);
@@ -1229,6 +1232,7 @@ describe('Reports Service', () => {
     });
 
     it('should return "manager" when user has both manager and teacher roles (highest priority)', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([
         { role: 'teacher' },
         { role: 'manager' },
@@ -1240,6 +1244,7 @@ describe('Reports Service', () => {
     });
 
     it('should return "leader" when user has both leader and teacher roles', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([
         { role: 'teacher' },
         { role: 'leader' },
@@ -1251,6 +1256,7 @@ describe('Reports Service', () => {
     });
 
     it('should return null when user has no roles for the class', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
       const result = await reportsService.getUserClassRole(100, 10);
@@ -1259,23 +1265,33 @@ describe('Reports Service', () => {
     });
 
     it('should pass accountId and classId to the query', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
       await reportsService.getUserClassRole(42, 99);
 
-      const params = mockedExecuteQuery.mock.calls[0]![1];
+      const params = mockedExecuteQuery.mock.calls[1]![1];
       expect(params).toEqual([42, 99]);
     });
 
     it('should query roles table', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
       await reportsService.getUserClassRole(1, 1);
 
-      const queryStr = mockedExecuteQuery.mock.calls[0]![0] as string;
+      const queryStr = mockedExecuteQuery.mock.calls[1]![0] as string;
       expect(queryStr).toContain('roles');
       expect(queryStr).toContain('account_id');
       expect(queryStr).toContain('class_id');
+    });
+
+    it('should return "admin" when user is an admin', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 1 }] as any);
+
+      const result = await reportsService.getUserClassRole(100, 10);
+
+      expect(result).toBe('manager');
     });
 
     it('should propagate DB errors', async () => {
