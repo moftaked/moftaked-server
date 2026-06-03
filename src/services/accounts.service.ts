@@ -12,7 +12,7 @@ async function generatePassword() {
       numbers: true,
       uppercase: true,
       lowercase: true,
-      symbols: true,
+      symbols: '!@#$%^&*(),.?":{}|<>',
       strict: true,
     });
     resolve(password);
