@@ -20,24 +20,54 @@ export async function createAccount(req: Request, res: Response) {
   res.json(result);
 }
 
-export async function getAccounts(_req: Request, res: Response) {
+export async function getAccounts(req: Request, res: Response) {
+  const user = (req.res?.locals as authenticatedLocals)?.user;
   try {
-    const accounts = await executeQuery<RowDataPacket[]>(
-      `SELECT 
-        a.account_id, 
-        a.username, 
-        a.real_name,
-        GROUP_CONCAT(
-          DISTINCT CONCAT(r.role_id, ':', r.role, ':', r.class_id, ':', c.class_name, ':', s.school_name)
-          SEPARATOR '|'
-        ) as roles_info
-      FROM accounts a
-      LEFT JOIN roles r ON a.account_id = r.account_id
-      LEFT JOIN classes c ON r.class_id = c.class_id
-      LEFT JOIN schools s ON c.school_id = s.school_id
-      GROUP BY a.account_id
-      ORDER BY a.real_name`,
-    );
+    const userManagedSchools = await rolesService.getManagedSchools(user.sub);
+    const schoolIds = userManagedSchools.map((r: any) => r.school_id);
+    const isAdmin = await authService.isAdmin(user.sub);
+
+    let accounts: RowDataPacket[];
+    if (isAdmin) {
+      accounts = await executeQuery<RowDataPacket[]>(
+        `SELECT 
+          a.account_id, 
+          a.username, 
+          a.real_name,
+          GROUP_CONCAT(
+            DISTINCT CONCAT(r.role_id, ':', r.role, ':', r.class_id, ':', c.class_name, ':', s.school_name)
+            SEPARATOR '|'
+          ) as roles_info
+        FROM accounts a
+        LEFT JOIN roles r ON a.account_id = r.account_id
+        LEFT JOIN classes c ON r.class_id = c.class_id
+        LEFT JOIN schools s ON c.school_id = s.school_id
+        GROUP BY a.account_id
+        ORDER BY a.real_name`,
+      );
+    } else if (schoolIds.length > 0) {
+      const placeholders = schoolIds.map(() => '?').join(',');
+      accounts = await executeQuery<RowDataPacket[]>(
+        `SELECT 
+          a.account_id, 
+          a.username, 
+          a.real_name,
+          GROUP_CONCAT(
+            DISTINCT CONCAT(r.role_id, ':', r.role, ':', r.class_id, ':', c.class_name, ':', s.school_name)
+            SEPARATOR '|'
+          ) as roles_info
+        FROM accounts a
+        INNER JOIN roles r ON a.account_id = r.account_id
+        INNER JOIN classes c ON r.class_id = c.class_id
+        INNER JOIN schools s ON c.school_id = s.school_id
+        WHERE s.school_id IN (${placeholders})
+        GROUP BY a.account_id
+        ORDER BY a.real_name`,
+        schoolIds,
+      );
+    } else {
+      accounts = [];
+    }
 
     const result = accounts.map((account) => {
       const roles: { role_id: number; role: string; class_id: number; class_name: string; school_name: string }[] = [];

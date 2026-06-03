@@ -14,8 +14,9 @@ export type authenticatedLocals = {user: { sub: number, username: string }};
 
 export function isAuthenticated() {
   return (req: Request, res: Response, next: NextFunction) => {
-    const token = req.headers.authorization;
-    if (token === undefined) return next(Err(StatusCodes.UNAUTHORIZED));
+    const header = req.headers.authorization;
+    if (header === undefined) return next(Err(StatusCodes.UNAUTHORIZED));
+    const token = header.startsWith('Bearer ') ? header.slice(7) : header;
     const decodedToken: JwtPayload = authService.verify(token);
     res.locals['user'] = decodedToken['payload'];
     next();

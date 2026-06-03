@@ -353,13 +353,11 @@ export async function getChronicAbsentees(
 
     const personType = req.query.type || "student";
     const threshold = parseInt(req.query.threshold || "50");
-    const lastN = parseInt(req.query.last || "5");
 
     const data = await reportsService.getChronicAbsentees(
       classId,
       personType,
       threshold,
-      lastN,
     );
     res.status(StatusCodes.OK).json({ success: true, data });
   } catch (err) {

@@ -3,6 +3,7 @@ import { executeQuery } from "./database.service";
 import { Err, Ok } from "result2";
 import { StatusCodes } from "http-status-codes";
 import { Roles } from "../enums/roles.enum";
+import accountsService from "./accounts.service";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -46,6 +47,25 @@ export interface school extends RowDataPacket {
  * This drives the client-side reports landing page.
  */
 async function getReportsAccess(accountId: number) {
+  if (await accountsService.isAdmin(accountId)) {
+    const allSchools = await executeQuery<RowDataPacket[]>(
+      'SELECT school_id, school_name FROM schools ORDER BY school_name',
+    );
+    const allClasses = await executeQuery<RowDataPacket[]>(
+      `SELECT c.class_id, c.class_name, s.school_name
+       FROM classes c INNER JOIN schools s USING(school_id)
+       ORDER BY s.school_name, c.class_name`,
+    );
+    return {
+      isManager: true,
+      isLeader: true,
+      isTeacher: true,
+      managedSchools: allSchools.map(s => ({ school_id: s['school_id'], school_name: s['school_name'] })),
+      leaderClasses: allClasses.map(c => ({ class_id: c['class_id'], class_name: c['class_name'], school_name: c['school_name'] })),
+      teacherClasses: allClasses.map(c => ({ class_id: c['class_id'], class_name: c['class_name'], school_name: c['school_name'] })),
+    };
+  }
+
   // Get all roles for the user
   const roles = await executeQuery<RowDataPacket[]>(
     `SELECT r.role, r.class_id, r.school_id, c.class_name, s.school_name
@@ -151,7 +171,7 @@ async function getLeaderEventReport(
     order by DATE(occurence_date) desc
     limit 5;
     `,
-    [date, eventId, eventType],
+    [eventId, date, eventType],
   );
 
   return results;
@@ -424,9 +444,9 @@ async function getEventAttendanceTrends(
       pc.person_id = a.person_id
     GROUP BY eo.event_occurence_id, eo.occurence_date
     ORDER BY eo.occurence_date DESC
-    LIMIT ${Number(limit)};
+    LIMIT ?;
     `,
-    [eventId, personType],
+    [eventId, personType, Number(limit)],
   );
 
   // Get event info
@@ -623,9 +643,9 @@ async function getPersonAttendanceHistory(
         a.person_id = ?
       WHERE eo.event_id = ?
       ORDER BY eo.occurence_date DESC
-      LIMIT ${Number(limit)};
+      LIMIT ?;
       `,
-      [personId, event['event_id']],
+      [personId, event['event_id'], Number(limit)],
     );
 
     const totalOccurrences = history.length;
@@ -685,9 +705,9 @@ async function getClassAvailableDates(classId: number, limit: number = 30) {
     WHERE e.class_id = ?
     GROUP BY eo.occurence_date
     ORDER BY eo.occurence_date DESC
-    LIMIT ${Number(limit)};
+    LIMIT ?;
     `,
-    [classId],
+    [classId, Number(limit)],
   );
   return results;
 }
@@ -704,7 +724,6 @@ async function getChronicAbsentees(
   classId: number,
   personType: string,
   thresholdPercent: number = 50,
-  _lastNOccurrences: number = 5,
 ) {
   const results = await executeQuery<RowDataPacket[]>(
     `

@@ -1,8 +1,46 @@
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { executeQuery, getConnection } from './database.service';
 import dataVersionsService from './data-versions.service';
+import accountsService from './accounts.service';
 
 async function getUserJoinedSchoolsClasses(userId: number) {
+  const isAdmin = await accountsService.isAdmin(userId);
+  if (isAdmin) {
+    const allClasses = await executeQuery<RowDataPacket[]>(
+      `SELECT
+        s.school_id,
+        s.school_name,
+        c.class_id,
+        c.class_name,
+        'admin' AS role
+      FROM classes c
+      INNER JOIN schools s ON s.school_id = c.school_id
+      ORDER BY s.school_name, c.class_name`,
+    );
+
+    const classes: {
+      school_id: number;
+      school_name: string;
+      role: 'admin' | 'manager' | 'leader' | 'teacher';
+      classes: { class_id: number; class_name: string }[];
+    }[] = [];
+
+    for (const row of allClasses) {
+      let school = classes.find(c => c.school_id === row['school_id']);
+      if (!school) {
+        school = {
+          school_id: row['school_id'],
+          school_name: row['school_name'],
+          role: 'admin',
+          classes: [],
+        };
+        classes.push(school);
+      }
+      school.classes.push({ class_id: row['class_id'], class_name: row['class_name'] });
+    }
+    return classes;
+  }
+
   const classRows = await executeQuery<RowDataPacket[]>(
     `SELECT
       classes.school_id,
@@ -149,6 +187,16 @@ async function deleteSchool(schoolId: number) {
       await connection.query(`DELETE FROM classes WHERE school_id = ?`, [schoolId]);
     }
     await connection.query('DELETE FROM schools WHERE school_id = ?', [schoolId]);
+
+    const [schoolRows] = await connection.query<RowDataPacket[]>('SELECT COUNT(*) AS cnt FROM schools');
+    if (schoolRows[0]!['cnt'] === 0) {
+      await connection.query('INSERT INTO schools (school_id, school_name) VALUES (1, "Default School")');
+    }
+    const [rows] = await connection.query<RowDataPacket[]>('SELECT COUNT(*) AS cnt FROM classes');
+    if (rows[0]!['cnt'] === 0) {
+      await connection.query('INSERT INTO classes (class_id, class_name, school_id) VALUES (1, "Default Class", 1)');
+    }
+    await connection.query('INSERT IGNORE INTO roles (account_id, class_id, role, school_id) VALUES (80, 1, "manager", 1)');
     await connection.commit();
     dataVersionsService.touchClasses().catch(() => {});
   } catch (error) {
@@ -189,6 +237,12 @@ async function deleteClass(classId: number) {
     await connection.query('DELETE FROM roles WHERE class_id = ?', [classId]);
     await connection.query('DELETE FROM person_class WHERE class_id = ?', [classId]);
     await connection.query('DELETE FROM classes WHERE class_id = ?', [classId]);
+
+    const [rows] = await connection.query<RowDataPacket[]>('SELECT COUNT(*) AS cnt FROM classes');
+    if (rows[0]!['cnt'] === 0) {
+      await connection.query('INSERT INTO classes (class_id, class_name, school_id) VALUES (1, "Default Class", 1)');
+      await connection.query('INSERT IGNORE INTO roles (account_id, class_id, role, school_id) VALUES (80, 1, "manager", 1)');
+    }
     await connection.commit();
     dataVersionsService.touchClasses().catch(() => {});
   } catch (error) {

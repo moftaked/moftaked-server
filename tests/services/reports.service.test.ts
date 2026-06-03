@@ -183,7 +183,7 @@ describe('Reports Service', () => {
       await reportsService.getLeaderEventReport('5', 'student', '2025-01-15');
 
       const params = mockedExecuteQuery.mock.calls[0]![1];
-      expect(params).toEqual(['2025-01-15', '5', 'student']);
+      expect(params).toEqual(['5', '2025-01-15', 'student']);
     });
 
     it('should use LIMIT 5 in the query', async () => {
@@ -636,14 +636,14 @@ describe('Reports Service', () => {
       expect(result.occurrences[0]!.rate).toBe(0);
     });
 
-    it('should pass eventId and personType to the trend query', async () => {
+    it('should pass eventId, personType, and limit to the trend query', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
       await reportsService.getEventAttendanceTrends(42, 'teacher');
 
       const params = mockedExecuteQuery.mock.calls[0]![1];
-      expect(params).toEqual([42, 'teacher']);
+      expect(params).toEqual([42, 'teacher', 10]);
     });
 
     it('should default to limit of 10', async () => {
@@ -653,7 +653,7 @@ describe('Reports Service', () => {
       await reportsService.getEventAttendanceTrends(5, 'student');
 
       const queryStr = mockedExecuteQuery.mock.calls[0]![0] as string;
-      expect(queryStr).toContain('LIMIT 10');
+      expect(queryStr).toContain('LIMIT ?');
     });
 
     it('should use custom limit when provided', async () => {
@@ -663,7 +663,7 @@ describe('Reports Service', () => {
       await reportsService.getEventAttendanceTrends(5, 'student', 20);
 
       const queryStr = mockedExecuteQuery.mock.calls[0]![0] as string;
-      expect(queryStr).toContain('LIMIT 20');
+      expect(queryStr).toContain('LIMIT ?');
     });
 
     it('should default event info fields to empty when event not found', async () => {
@@ -933,13 +933,13 @@ describe('Reports Service', () => {
       expect(result).toEqual(mockDates);
     });
 
-    it('should pass classId to the query', async () => {
+    it('should pass classId and limit to the query', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
       await reportsService.getClassAvailableDates(42);
 
       const params = mockedExecuteQuery.mock.calls[0]![1];
-      expect(params).toEqual([42]);
+      expect(params).toEqual([42, 30]);
     });
 
     it('should order by date DESC', async () => {
@@ -958,7 +958,7 @@ describe('Reports Service', () => {
       await reportsService.getClassAvailableDates(10);
 
       const queryStr = mockedExecuteQuery.mock.calls[0]![0] as string;
-      expect(queryStr).toContain('LIMIT 30');
+      expect(queryStr).toContain('LIMIT ?');
     });
 
     it('should use custom limit when provided', async () => {
@@ -967,7 +967,7 @@ describe('Reports Service', () => {
       await reportsService.getClassAvailableDates(10, 50);
 
       const queryStr = mockedExecuteQuery.mock.calls[0]![0] as string;
-      expect(queryStr).toContain('LIMIT 50');
+      expect(queryStr).toContain('LIMIT ?');
     });
 
     it('should group by occurence_date', async () => {
@@ -1018,7 +1018,7 @@ describe('Reports Service', () => {
     it('should pass classId (3x), personType (2x), and threshold to the query', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
-      await reportsService.getChronicAbsentees(10, 'student', 50, 5);
+      await reportsService.getChronicAbsentees(10, 'student', 50);
 
       const params = mockedExecuteQuery.mock.calls[0]![1];
       expect(params).toEqual([10, 10, 'student', 'student', 10, 50]);

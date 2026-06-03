@@ -61,10 +61,12 @@ describe('Accounts Service', () => {
       const result = await accountsService.createAccount('john', 'John Doe');
 
       expect(mockedGenerate).toHaveBeenCalledWith({
-        length: 8,
+        length: 12,
         numbers: true,
         uppercase: true,
         lowercase: true,
+        symbols: true,
+        strict: true,
       });
       expect(mockedBcrypt.hash).toHaveBeenCalledWith('GenPass1', 10);
       expect(result).toEqual({ userId: 55, password: 'GenPass1' });

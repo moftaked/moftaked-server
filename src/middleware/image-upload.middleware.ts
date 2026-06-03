@@ -89,7 +89,9 @@ function deleteImageVariants(baseFilename: string): void {
   for (const size of Object.keys(IMAGE_SIZES) as SizeKey[]) {
     const filename = sizedFilename(baseFilename, size);
     const filePath = path.join(UPLOAD_DIR, filename);
-    fs.unlink(filePath, () => {}); // fire-and-forget
+    fs.unlink(filePath, (err) => {
+      if (err) console.error(`Failed to delete image variant: ${filePath}`, err);
+    });
   }
 }
 

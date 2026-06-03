@@ -808,7 +808,7 @@ describe('Reports Controller', () => {
       await (getChronicAbsentees as any)(req, res, next);
 
       expect(mockedReportsService.getUserClassRole).toHaveBeenCalledWith(100, 10);
-      expect(mockedReportsService.getChronicAbsentees).toHaveBeenCalledWith(10, 'student', 50, 5);
+      expect(mockedReportsService.getChronicAbsentees).toHaveBeenCalledWith(10, 'student', 50);
       expect(res.status).toHaveBeenCalledWith(StatusCodes.OK);
     });
 
@@ -858,7 +858,7 @@ describe('Reports Controller', () => {
       expect(error.statusCode || error.status).toBe(StatusCodes.FORBIDDEN);
     });
 
-    it('should default type to "student", threshold to 50, last to 5', async () => {
+    it('should default type to "student", threshold to 50', async () => {
       mockedReportsService.getUserClassRole.mockResolvedValueOnce('manager');
       mockedReportsService.getChronicAbsentees.mockResolvedValueOnce([] as any);
 
@@ -871,7 +871,7 @@ describe('Reports Controller', () => {
 
       await (getChronicAbsentees as any)(req, res, next);
 
-      expect(mockedReportsService.getChronicAbsentees).toHaveBeenCalledWith(10, 'student', 50, 5);
+      expect(mockedReportsService.getChronicAbsentees).toHaveBeenCalledWith(10, 'student', 50);
     });
 
     it('should forward service errors to next', async () => {

@@ -174,7 +174,9 @@ export function uploadPersonPhoto(type: 'student' | 'teacher') {
         const oldBase = oldPhotoLink.replace(/\.webp$/, '');
         deleteImageVariants(oldBase);
         const legacyPath = path.join('uploads', 'images', oldPhotoLink);
-        fs.unlink(legacyPath, () => {});
+        fs.unlink(legacyPath, (err) => {
+          if (err) console.error(`Failed to delete legacy photo: ${legacyPath}`, err);
+        });
       }
 
       const allClasses = await personsService.getPersonClasses(personId) as any[];

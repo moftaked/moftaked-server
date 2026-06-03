@@ -14,7 +14,7 @@ describe('Accounts Schemas', () => {
     it('should pass with valid data including password', () => {
       const result = createAccountSchema.safeParse({
         username: 'tony',
-        password: 'aA1bcdef',
+        password: 'aA1bcdefgh!x',
         real_name: 'Tony',
       });
       expect(result.success).toBe(true);
@@ -58,7 +58,7 @@ describe('Accounts Schemas', () => {
     it('should fail when password is missing uppercase letter', () => {
       const result = createAccountSchema.safeParse({
         username: 'tony',
-        password: 'aa1bcdef',
+        password: 'aa1bcdefgh!',
         real_name: 'Tony',
       });
       expect(result.success).toBe(false);
@@ -67,7 +67,7 @@ describe('Accounts Schemas', () => {
     it('should fail when password is missing lowercase letter', () => {
       const result = createAccountSchema.safeParse({
         username: 'tony',
-        password: 'AA1BCDEF',
+        password: 'AA1BCDEFGH!',
         real_name: 'Tony',
       });
       expect(result.success).toBe(false);
@@ -76,25 +76,25 @@ describe('Accounts Schemas', () => {
     it('should fail when password is missing digit', () => {
       const result = createAccountSchema.safeParse({
         username: 'tony',
-        password: 'aAbcdefg',
+        password: 'aAbcdefghi!',
         real_name: 'Tony',
       });
       expect(result.success).toBe(false);
     });
 
-    it('should fail when password contains special characters', () => {
+    it('should pass when password contains special characters', () => {
       const result = createAccountSchema.safeParse({
         username: 'tony',
-        password: 'aA1bcd!f',
+        password: 'aA1bcd!fghij',
         real_name: 'Tony',
       });
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
     });
 
     it('should fail when password is only special characters', () => {
       const result = createAccountSchema.safeParse({
         username: 'tony',
-        password: '!@#$%^&*',
+        password: '!@#$%^&*()_+',
         real_name: 'Tony',
       });
       expect(result.success).toBe(false);
@@ -198,20 +198,19 @@ describe('Accounts Schemas', () => {
       }
     });
 
-    it('should pass when password is exactly 1 char with valid pattern', () => {
-      // min is 1, but regex requires upper+lower+digit so min effective length is 3
+    it('should fail when password is too short (8 chars, min 12)', () => {
       const result = createAccountSchema.safeParse({
         username: 'tony',
-        password: 'aA1',
+        password: 'aA1b!cde',
         real_name: 'Tony',
       });
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
     });
 
     it('should fail when password exceeds 50 chars', () => {
       const result = createAccountSchema.safeParse({
         username: 'tony',
-        password: 'aA1' + 'b'.repeat(48),
+        password: 'aA1!' + 'b'.repeat(47),
         real_name: 'Tony',
       });
       expect(result.success).toBe(false);
@@ -220,7 +219,7 @@ describe('Accounts Schemas', () => {
     it('should pass when password is exactly 50 chars with valid pattern', () => {
       const result = createAccountSchema.safeParse({
         username: 'tony',
-        password: 'aA1' + 'b'.repeat(47),
+        password: 'aA1!' + 'b'.repeat(46),
         real_name: 'Tony',
       });
       expect(result.success).toBe(true);

@@ -6,6 +6,9 @@ import { Request, Response, NextFunction } from 'express';
 import personsService from '../services/persons.service';
 import createHttpError from 'http-errors';
 import { CreateSchoolDto, UpdateSchoolDto, CreateClassDto, UpdateClassDto, UpdateEventDto } from '../schemas/classes.schemas';
+import rolesService from '../services/roles.service';
+import { executeQuery } from '../services/database.service';
+import { RowDataPacket } from 'mysql2/promise';
 
 export async function getClasses(_req: Request, res: Response) {
   const userId: number = res.locals['user']['sub'];
@@ -78,8 +81,7 @@ export async function deleteSchool(req: Request, res: Response, next: NextFuncti
   }
   
   const userId = res.locals['user']['sub'];
-  const isManager = await authService.isManagerOfSchool(userId, schoolId);
-  if (!isManager) {
+  if (!(await authService.isAdmin(userId)) && !(await authService.isManagerOfSchool(userId, schoolId))) {
     return next(createHttpError(StatusCodes.FORBIDDEN, 'You are not authorized to delete this school'));
   }
   
@@ -92,7 +94,28 @@ export async function deleteSchool(req: Request, res: Response, next: NextFuncti
 // ---------------------------------------------------------------------------
 
 export async function getAllClassesWithSchool(_req: Request, res: Response) {
-  const classes = await classesService.getAllClassesWithSchool();
+  const user = res.locals['user'] as { sub: number; username: string };
+  const isAdmin = await authService.isAdmin(user.sub);
+  let classes;
+  if (isAdmin) {
+    classes = await classesService.getAllClassesWithSchool();
+  } else {
+    const managedSchools = await rolesService.getManagedSchools(user.sub);
+    const schoolIds = managedSchools.map((r: any) => r.school_id);
+    if (schoolIds.length === 0) {
+      res.status(StatusCodes.OK).json({ success: true, data: [] });
+      return;
+    }
+    const placeholders = schoolIds.map(() => '?').join(',');
+    classes = await executeQuery<RowDataPacket[]>(
+      `SELECT c.class_id, c.class_name, s.school_id, s.school_name
+       FROM classes c
+       INNER JOIN schools s ON c.school_id = s.school_id
+       WHERE s.school_id IN (${placeholders})
+       ORDER BY s.school_name, c.class_name`,
+      schoolIds,
+    );
+  }
   res.status(StatusCodes.OK).json({ success: true, data: classes });
 }
 
@@ -116,6 +139,17 @@ export async function deleteClassById(req: Request, res: Response, next: NextFun
   const classId = parseInt(req.params['classId']!, 10);
   if (isNaN(classId)) {
     return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid class ID'));
+  }
+  const userId = res.locals['user']['sub'];
+  if (!(await authService.isAdmin(userId))) {
+    const schoolRows = await classesService.getClassSchoolId(classId);
+    if (schoolRows.length === 0) {
+      return next(createHttpError(StatusCodes.NOT_FOUND, 'Class not found'));
+    }
+    const schoolId = schoolRows[0]!['school_id'];
+    if (!(await authService.isManagerOfSchool(userId, schoolId))) {
+      return next(createHttpError(StatusCodes.FORBIDDEN, 'You are not authorized to delete this class'));
+    }
   }
   await classesService.deleteClass(classId);
   res.status(StatusCodes.OK).json({ success: true });

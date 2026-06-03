@@ -157,7 +157,7 @@ describe('Auth Service', () => {
       expect(mockedJwt.sign).toHaveBeenCalledWith(
         { payload: { sub: 123, username: 'testuser' } },
         'test-jwt-secret',
-        { expiresIn: '1Days', algorithm: 'HS256' },
+        { expiresIn: '1h', algorithm: 'HS256' },
       );
     });
 

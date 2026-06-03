@@ -105,7 +105,7 @@ describe('Authorization Middleware', () => {
       }).toThrow();
     });
 
-    it('should pass the raw token value to authService.verify (not split Bearer)', () => {
+    it('should strip Bearer prefix before passing to authService.verify', () => {
       const decodedPayload = { payload: { sub: 5, username: 'test' } };
       mockedAuthService.verify.mockReturnValue(decodedPayload as any);
       mockReq.headers = { authorization: 'Bearer some-token' };
@@ -113,8 +113,8 @@ describe('Authorization Middleware', () => {
       const middleware = isAuthenticated();
       middleware(mockReq as Request, mockRes as Response, mockNext);
 
-      // The middleware passes the raw header value to verify
-      expect(mockedAuthService.verify).toHaveBeenCalledWith('Bearer some-token');
+      // The middleware strips "Bearer " prefix before passing to verify
+      expect(mockedAuthService.verify).toHaveBeenCalledWith('some-token');
     });
   });
 

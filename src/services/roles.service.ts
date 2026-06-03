@@ -36,7 +36,7 @@ async function getHighestRole(
     classId ? [classId] : undefined,
     schoolId,
   );
-  const isAdmin = roles.some(role => role['role'] === 'admin');
+  const isAdmin = await executeQuery<RowDataPacket[]>('select is_admin from accounts where account_id = ?', [accountId]).then(result => result[0]?.['is_admin']);
   if (isAdmin) {
     return Roles.admin;
   }
@@ -110,6 +110,13 @@ async function getRoleById(roleId: number) {
 }
 
 async function getManagedSchools(accountId: number) {
+  const isAdmin = await getHighestRole(accountId) === Roles.admin;
+  if (isAdmin) {
+    const result = await executeQuery<RowDataPacket[]>(
+      'SELECT DISTINCT school_id FROM classes',
+    );
+    return result;
+  }
   const result = await executeQuery<RowDataPacket[]>(
     'SELECT DISTINCT school_id FROM roles WHERE account_id = ? AND role = ?',
     [accountId, Roles.manager],

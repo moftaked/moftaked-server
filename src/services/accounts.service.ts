@@ -1,16 +1,19 @@
 import { generate } from 'generate-password';
 import bcrypt from 'bcrypt';
 import { getConnection } from './database.service';
-import { PoolConnection, ResultSetHeader } from 'mysql2/promise';
+import { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
+import { executeQuery } from './database.service';
 import { User } from '../types';
 
 async function generatePassword() {
   return new Promise<string>(resolve => {
     const password = generate({
-      length: 8,
+      length: 12,
       numbers: true,
       uppercase: true,
       lowercase: true,
+      symbols: true,
+      strict: true,
     });
     resolve(password);
   });
@@ -58,4 +61,12 @@ async function getAccountId(username: string, connection?: PoolConnection) {
   return rows[0].account_id;
 }
 
-export default { createAccount, getAccountId };
+async function isAdmin(accountId: number) {
+  const rows = await executeQuery<RowDataPacket[]>(
+    'select is_admin from accounts where account_id = ? limit 1',
+    [accountId],
+  );
+  return rows[0]?.['is_admin'] === 1;
+}
+
+export default { createAccount, getAccountId, isAdmin };

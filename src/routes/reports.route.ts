@@ -48,7 +48,7 @@ reportsRouter.get(
 // ---------------------------------------------------------------------------
 reportsRouter.get(
   "/leaders/:eventId/:type",
-  hasRole([Roles.leader, Roles.manager]),
+  isInEventClass([Roles.leader, Roles.manager]),
   getLeaderEventReport,
 );
 

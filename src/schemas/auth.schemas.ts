@@ -3,7 +3,7 @@ import { z } from 'zod/v4';
 export const signInSchema = z
   .object({
     username: z.string().min(4).max(50).trim(),
-    password: z.string().min(8),
+    password: z.string().min(12).regex(/[!@#$%^&*(),.?":{}|<>]/),
   })
   .required();
 

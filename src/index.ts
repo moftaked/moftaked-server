@@ -36,40 +36,11 @@ authService.init(process.env['JWT_SECRET']!);
 
 const app = express();
 const port = 3000;
-const isProduction = process.env['NODE_ENV'] === 'production';
 
 app.set('trust proxy', 1);
 
-const allowedOrigins = isProduction
-  ? [
-      'https://moftaked.hopto.org',
-      'http://206.81.28.167:8080',
-    ]
-  : [
-      'https://moftaked.hopto.org',
-      'http://206.81.28.167:8080',
-      'http://localhost',
-      'http://localhost:3000',
-      'http://127.0.0.1',
-      'http://192.168.1.8',
-    ];
-
 const corsOptions = {
-  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    if (isProduction) {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      if (/^https?:\/\/[a-zA-Z0-9-]+\.lhr\.life(:\d+)?$/.test(origin)) return callback(null, true);
-      callback(new Error(`CORS: origin ${origin} not allowed`));
-    } else {
-      if (!origin) return callback(null, true);
-      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
-        return callback(null, true);
-      }
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      callback(new Error(`CORS: origin ${origin} not allowed`));
-    }
-  },
+  origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],

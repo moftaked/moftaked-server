@@ -12,7 +12,11 @@ export function handleError(err: HttpErr | Error, _req: Request, res: Response, 
   } else if (err instanceof HttpError) {
     res.status(err.status).json({ success: false, message: err.message });
   } else if (err instanceof ZodError) {
-    res.status(StatusCodes.BAD_REQUEST).json({ details: err.issues });
+    if (process.env['NODE_ENV'] === 'production') {
+      res.status(StatusCodes.BAD_REQUEST).json({ message: 'Invalid request data' });
+    } else {
+      res.status(StatusCodes.BAD_REQUEST).json({ details: err.issues });
+    }
   } else if (err instanceof JsonWebTokenError) {
     res.status(StatusCodes.UNAUTHORIZED).end();
   } else if (err instanceof Result) {

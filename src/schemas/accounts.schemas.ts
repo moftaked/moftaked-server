@@ -9,9 +9,9 @@ export const createAccountSchema = z.object({
     .trim(),
   password: z
     .string()
-    .min(1)
+    .min(12)
     .max(50)
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])[a-zA-Z0-9]+$/)
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>])[a-zA-Z0-9!@#$%^&*(),.?":{}|<>]+$/)
     .optional(),
   real_name: z.string().min(1).max(50).trim(),
 });
