@@ -1337,6 +1337,7 @@ describe('Reports Service', () => {
         { date: '2025-01-15', display_date: '15/1/2025' },
         { date: '2025-01-08', display_date: '8/1/2025' },
       ];
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce(mockDates as any);
 
       const result = await reportsService.getUserAvailableDates(100);
@@ -1345,45 +1346,50 @@ describe('Reports Service', () => {
     });
 
     it('should pass accountId to the query', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
       await reportsService.getUserAvailableDates(42);
 
-      const params = mockedExecuteQuery.mock.calls[0]![1];
+      const params = mockedExecuteQuery.mock.calls[1]![1];
       expect(params).toEqual([42]);
     });
 
-    it('should join event_occurence, events, and roles tables', async () => {
+    it('should join event_occurence and events tables', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
       await reportsService.getUserAvailableDates(1);
 
-      const queryStr = mockedExecuteQuery.mock.calls[0]![0] as string;
+      const queryStr = mockedExecuteQuery.mock.calls[1]![0] as string;
       expect(queryStr).toContain('event_occurence');
       expect(queryStr).toContain('events');
       expect(queryStr).toContain('roles');
     });
 
     it('should order by date DESC', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
       await reportsService.getUserAvailableDates(1);
 
-      const queryStr = mockedExecuteQuery.mock.calls[0]![0] as string;
+      const queryStr = mockedExecuteQuery.mock.calls[1]![0] as string;
       expect(queryStr).toContain('ORDER BY');
       expect(queryStr).toContain('DESC');
     });
 
     it('should group by occurence_date to avoid duplicates', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
       await reportsService.getUserAvailableDates(1);
 
-      const queryStr = mockedExecuteQuery.mock.calls[0]![0] as string;
+      const queryStr = mockedExecuteQuery.mock.calls[1]![0] as string;
       expect(queryStr).toContain('GROUP BY');
     });
 
     it('should return empty array when no dates available', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
       const result = await reportsService.getUserAvailableDates(999);
@@ -1395,6 +1401,26 @@ describe('Reports Service', () => {
       mockedExecuteQuery.mockRejectedValueOnce(new Error('DB error') as never);
 
       await expect(reportsService.getUserAvailableDates(1)).rejects.toThrow('DB error');
+    });
+
+    it('should return all dates for admin users without role filtering', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 1 }] as any);
+      const mockDates = [{ date: '2025-03-01', display_date: '1/3/2025' }];
+      mockedExecuteQuery.mockResolvedValueOnce(mockDates as any);
+
+      const result = await reportsService.getUserAvailableDates(1);
+
+      expect(result).toEqual(mockDates);
+    });
+
+    it('should not join roles table for admin users', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 1 }] as any);
+      mockedExecuteQuery.mockResolvedValueOnce([] as any);
+
+      await reportsService.getUserAvailableDates(1);
+
+      const queryStr = mockedExecuteQuery.mock.calls[1]![0] as string;
+      expect(queryStr).not.toContain('roles');
     });
   });
 });
