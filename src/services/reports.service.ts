@@ -950,19 +950,36 @@ async function isSchoolManager(accountId: number, schoolId: number) {
  * date picker so the user can only pick dates that actually have data.
  */
 async function getUserAvailableDates(accountId: number) {
-  const results = await executeQuery<RowDataPacket[]>(
-    `
-    SELECT
-      DATE_FORMAT(eo.occurence_date, '%Y-%m-%d') AS \`date\`,
-      DATE_FORMAT(eo.occurence_date, '%d/%c/%Y') AS display_date
-    FROM event_occurence eo
-    INNER JOIN events e ON eo.event_id = e.event_id
-    INNER JOIN roles r ON e.class_id = r.class_id AND r.account_id = ?
-    GROUP BY eo.occurence_date
-    ORDER BY eo.occurence_date DESC
-    `,
-    [accountId],
-  );
+  const isAdminUser = await accountsService.isAdmin(accountId);
+
+  let query: string;
+  const params: any[] = [];
+
+  if (isAdminUser) {
+    query = `
+      SELECT
+        DATE_FORMAT(eo.occurence_date, '%Y-%m-%d') AS \`date\`,
+        DATE_FORMAT(eo.occurence_date, '%d/%c/%Y') AS display_date
+      FROM event_occurence eo
+      INNER JOIN events e ON eo.event_id = e.event_id
+      GROUP BY eo.occurence_date
+      ORDER BY eo.occurence_date DESC
+    `;
+  } else {
+    query = `
+      SELECT
+        DATE_FORMAT(eo.occurence_date, '%Y-%m-%d') AS \`date\`,
+        DATE_FORMAT(eo.occurence_date, '%d/%c/%Y') AS display_date
+      FROM event_occurence eo
+      INNER JOIN events e ON eo.event_id = e.event_id
+      INNER JOIN roles r ON e.class_id = r.class_id AND r.account_id = ?
+      GROUP BY eo.occurence_date
+      ORDER BY eo.occurence_date DESC
+    `;
+    params.push(accountId);
+  }
+
+  const results = await executeQuery<RowDataPacket[]>(query, params);
   return results;
 }
 
