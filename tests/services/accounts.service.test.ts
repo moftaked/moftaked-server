@@ -65,7 +65,7 @@ describe('Accounts Service', () => {
         numbers: true,
         uppercase: true,
         lowercase: true,
-        symbols: true,
+        symbols: '!@#$%^&*(),.?":{}|<>',
         strict: true,
       });
       expect(mockedBcrypt.hash).toHaveBeenCalledWith('GenPass1', 10);
