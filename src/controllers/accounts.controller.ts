@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import accountsService from '../services/accounts.service';
-import { CreateAccountDto } from '../schemas/accounts.schemas';
+import { CreateAccountDto, SetAdminDto } from '../schemas/accounts.schemas';
 import { executeQuery, getConnection } from '../services/database.service';
 import { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import { StatusCodes } from 'http-status-codes';
@@ -20,6 +20,26 @@ export async function createAccount(req: Request, res: Response) {
   res.json(result);
 }
 
+export async function setAdmin(req: Request, res: Response, next: NextFunction) {
+  const body: SetAdminDto = req.body;
+
+  try {
+    const user = (res.locals as any).user;
+    const requesterIsAdmin = await authService.isAdmin(user.sub);
+    if (!requesterIsAdmin) {
+      return next(createHttpError(StatusCodes.FORBIDDEN, 'Only admins can change admin status'));
+    }
+
+    await accountsService.setAdmin(body.user, body.admin);
+    res.status(StatusCodes.OK).json({ success: true });
+  } catch (error) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Error setting admin status',
+    });
+  }
+}
+
 export async function getAccounts(req: Request, res: Response) {
   const user = (req.res?.locals as authenticatedLocals)?.user;
   try {
@@ -34,6 +54,7 @@ export async function getAccounts(req: Request, res: Response) {
           a.account_id, 
           a.username, 
           a.real_name,
+          a.is_admin,
           GROUP_CONCAT(
             DISTINCT CONCAT(r.role_id, ':', r.role, ':', r.class_id, ':', c.class_name, ':', s.school_name)
             SEPARATOR '|'
@@ -52,6 +73,7 @@ export async function getAccounts(req: Request, res: Response) {
           a.account_id, 
           a.username, 
           a.real_name,
+          a.is_admin,
           GROUP_CONCAT(
             DISTINCT CONCAT(r.role_id, ':', r.role, ':', r.class_id, ':', c.class_name, ':', s.school_name)
             SEPARATOR '|'
@@ -88,6 +110,7 @@ export async function getAccounts(req: Request, res: Response) {
         account_id: account['account_id'],
         username: account['username'],
         real_name: account['real_name'],
+        is_admin: account['is_admin'] === 1,
         roles,
       };
     });

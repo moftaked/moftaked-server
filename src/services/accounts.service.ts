@@ -69,4 +69,17 @@ async function isAdmin(accountId: number) {
   return rows[0]?.['is_admin'] === 1;
 }
 
-export default { createAccount, getAccountId, isAdmin };
+async function setAdmin(user: number | string, admin: boolean) {
+  let userId: number;
+  if (typeof user === 'number') {
+    userId = user;
+  } else {
+    userId = await getAccountId(user);
+  }
+  await executeQuery(
+    'update accounts set is_admin = ? where account_id = ?',
+    [admin ? 1 : 0, userId],
+  );
+}
+
+export default { createAccount, getAccountId, isAdmin, setAdmin };

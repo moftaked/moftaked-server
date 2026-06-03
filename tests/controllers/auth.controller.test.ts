@@ -32,6 +32,7 @@ describe('Auth Controller', () => {
       mockedAuthService.signIn.mockResolvedValue(Ok({
         access_token: 'mock_token',
         user_id: 123,
+        is_admin: false,
         roles: '["user"]',
       }));
       const next = jest.fn();

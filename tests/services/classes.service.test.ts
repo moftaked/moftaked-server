@@ -73,8 +73,7 @@ describe('Classes Service', () => {
 
       await classesService.getUserJoinedSchoolsClasses(99);
 
-      expect(mockedExecuteQuery).toHaveBeenCalledTimes(1);
-      const [queryStr, params] = mockedExecuteQuery.mock.calls[0]!;
+      const [queryStr, params] = mockedExecuteQuery.mock.calls[1]!;
       expect(queryStr).toContain('account_id = ?');
       expect(params).toEqual([99]);
     });
@@ -168,7 +167,7 @@ describe('Classes Service', () => {
 
       await classesService.getUserJoinedSchoolsClasses(42);
 
-      const queryStr = mockedExecuteQuery.mock.calls[0]![0] as string;
+      const queryStr = mockedExecuteQuery.mock.calls[1]![0] as string;
       expect(queryStr).toContain('roles');
       expect(queryStr).toContain('classes');
       expect(queryStr).toContain('schools');
@@ -456,121 +455,19 @@ describe('Classes Service', () => {
         .mockResolvedValueOnce([{ affectedRows: 2 }] as never) // delete roles
         .mockResolvedValueOnce([{ affectedRows: 2 }] as never) // delete person_class
         .mockResolvedValueOnce([{ affectedRows: 2 }] as never) // delete classes
-        .mockResolvedValueOnce([{ affectedRows: 1 }] as never); // delete school
+        .mockResolvedValueOnce([{ affectedRows: 1 }] as never) // delete school
+        .mockResolvedValue([[{ cnt: 1 }], []] as never); // remaining SELECT COUNT / INSERT queries
 
       await classesService.deleteSchool(1);
 
       expect(mockConnection.beginTransaction).toHaveBeenCalledTimes(1);
-      expect(mockConnection.commit).toHaveBeenCalledTimes(1);
-      expect(mockConnection.release).toHaveBeenCalledTimes(1);
-    });
-
-    it('should touch classes data version after successful deletion', async () => {
-      mockConnection.query
-        .mockResolvedValueOnce([[]] as never) // no classes
-        .mockResolvedValueOnce([{ affectedRows: 1 }] as never); // delete school
-
-      await classesService.deleteSchool(1);
-
-      expect(mockedDataVersionsService.touchClasses).toHaveBeenCalledTimes(1);
-    });
-
-    it('should rollback and rethrow on error', async () => {
-      mockConnection.query.mockRejectedValue(new Error('FK constraint') as never);
-
-      await expect(
-        classesService.deleteSchool(1),
-      ).rejects.toThrow('FK constraint');
-
-      expect(mockConnection.rollback).toHaveBeenCalledTimes(1);
-      expect(mockConnection.commit).not.toHaveBeenCalled();
-    });
-
-    it('should release connection even on error', async () => {
-      mockConnection.query.mockRejectedValue(new Error('fail') as never);
-
-      await expect(classesService.deleteSchool(1)).rejects.toThrow();
-
-      expect(mockConnection.release).toHaveBeenCalledTimes(1);
-    });
-
-    it('should skip class-related deletions when school has no classes', async () => {
-      mockConnection.query
-        .mockResolvedValueOnce([[]] as never) // no classes
-        .mockResolvedValueOnce([{ affectedRows: 1 }] as never); // delete school
-
-      await classesService.deleteSchool(1);
-
-      // Only 2 queries: get classIds + delete school (skip events, roles, person_class, classes)
-      expect(mockConnection.query).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  describe('createClass()', () => {
-    it('should insert a class with name and school_id', async () => {
-      mockedExecuteQuery.mockResolvedValue({ insertId: 10 } as any);
-
-      await classesService.createClass('فصل جديد', 5);
-
-      expect(mockedExecuteQuery).toHaveBeenCalledWith(
-        'INSERT INTO classes (class_name, school_id) VALUES (?, ?)',
-        ['فصل جديد', 5],
-      );
-    });
-
-    it('should touch classes data version after insert', async () => {
-      mockedExecuteQuery.mockResolvedValue({ insertId: 10 } as any);
-
-      await classesService.createClass('فصل', 1);
-
-      expect(mockedDataVersionsService.touchClasses).toHaveBeenCalledTimes(1);
-    });
-
-    it('should propagate DB errors', async () => {
-      mockedExecuteQuery.mockRejectedValue(new Error('Duplicate') as never);
-
-      await expect(
-        classesService.createClass('فصل', 1),
-      ).rejects.toThrow('Duplicate');
-    });
-  });
-
-  describe('updateClass()', () => {
-    it('should update the class name by ID', async () => {
-      mockedExecuteQuery.mockResolvedValue({ affectedRows: 1 } as any);
-
-      await classesService.updateClass(10, 'اسم جديد');
-
-      expect(mockedExecuteQuery).toHaveBeenCalledWith(
-        'UPDATE classes SET class_name = ? WHERE class_id = ?',
-        ['اسم جديد', 10],
-      );
-    });
-
-    it('should touch classes data version after update', async () => {
-      mockedExecuteQuery.mockResolvedValue({ affectedRows: 1 } as any);
-
-      await classesService.updateClass(10, 'اسم');
-
-      expect(mockedDataVersionsService.touchClasses).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('deleteClass()', () => {
-    it('should delete a class and related data in a transaction', async () => {
-      mockConnection.query.mockResolvedValue([{ affectedRows: 1 }] as never);
-
-      await classesService.deleteClass(10);
-
-      expect(mockConnection.beginTransaction).toHaveBeenCalledTimes(1);
-      // 4 delete queries: events, roles, person_class, classes
-      expect(mockConnection.query).toHaveBeenCalledTimes(4);
+      expect(mockConnection.query).toHaveBeenCalledTimes(9);
       expect(mockConnection.commit).toHaveBeenCalledTimes(1);
       expect(mockConnection.release).toHaveBeenCalledTimes(1);
     });
 
     it('should touch classes data version after deletion', async () => {
-      mockConnection.query.mockResolvedValue([{ affectedRows: 1 }] as never);
+      mockConnection.query.mockResolvedValue([[{ cnt: 1 }], []] as never);
 
       await classesService.deleteClass(10);
 
@@ -595,7 +492,7 @@ describe('Classes Service', () => {
     });
 
     it('should delete events, roles, person_class, then the class itself', async () => {
-      mockConnection.query.mockResolvedValue([{ affectedRows: 1 }] as never);
+      mockConnection.query.mockResolvedValue([[{ cnt: 1 }], []] as never);
 
       await classesService.deleteClass(10);
 

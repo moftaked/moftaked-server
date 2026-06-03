@@ -82,6 +82,7 @@ describe('Auth Service', () => {
         expect(result.unwrap()).toEqual({
           access_token: 'mock-jwt-token',
           user_id: 123,
+          is_admin: false,
           roles: JSON.stringify([{ class_id: 1, role: 'teacher', school_id: 1 }]),
         });
       }

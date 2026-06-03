@@ -21,6 +21,7 @@ describe('Reports Service', () => {
 
   describe('getReportsAccess()', () => {
     it('should return isManager true when user has manager role', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([
         { role: 'manager', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'خدمة 1' },
       ] as any);
@@ -32,6 +33,7 @@ describe('Reports Service', () => {
     });
 
     it('should return isLeader true when user has leader role', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([
         { role: 'leader', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'خدمة 1' },
       ] as any);
@@ -45,6 +47,7 @@ describe('Reports Service', () => {
     });
 
     it('should return isTeacher true when user has teacher role', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([
         { role: 'teacher', class_id: 20, school_id: 2, class_name: 'الصف الثاني', school_name: 'خدمة 2' },
       ] as any);
@@ -58,6 +61,7 @@ describe('Reports Service', () => {
     });
 
     it('should deduplicate managed schools', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([
         { role: 'manager', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'خدمة 1' },
         { role: 'manager', class_id: 20, school_id: 1, class_name: 'الصف الثاني', school_name: 'خدمة 1' },
@@ -70,6 +74,7 @@ describe('Reports Service', () => {
     });
 
     it('should deduplicate leader classes', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([
         { role: 'leader', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'خدمة 1' },
         { role: 'leader', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'خدمة 1' },
@@ -81,6 +86,7 @@ describe('Reports Service', () => {
     });
 
     it('should deduplicate teacher classes', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([
         { role: 'teacher', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'خدمة 1' },
         { role: 'teacher', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'خدمة 1' },
@@ -92,6 +98,7 @@ describe('Reports Service', () => {
     });
 
     it('should include manager classes in leaderClasses (managers can access leader reports)', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([
         { role: 'manager', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'خدمة 1' },
       ] as any);
@@ -103,6 +110,7 @@ describe('Reports Service', () => {
     });
 
     it('should return empty arrays when user has no roles', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
       const result = await reportsService.getReportsAccess(100);
@@ -116,6 +124,7 @@ describe('Reports Service', () => {
     });
 
     it('should handle user with all three role types', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([
         { role: 'manager', class_id: 10, school_id: 1, class_name: 'الصف الأول', school_name: 'خدمة 1' },
         { role: 'leader', class_id: 20, school_id: 2, class_name: 'الصف الثاني', school_name: 'خدمة 2' },
@@ -134,20 +143,22 @@ describe('Reports Service', () => {
     });
 
     it('should pass accountId to the query', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
       await reportsService.getReportsAccess(42);
 
-      const params = mockedExecuteQuery.mock.calls[0]![1];
+      const params = mockedExecuteQuery.mock.calls[1]![1];
       expect(params).toEqual([42]);
     });
 
     it('should query roles with joined classes and schools', async () => {
+      mockedExecuteQuery.mockResolvedValueOnce([{ is_admin: 0 }] as any);
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
       await reportsService.getReportsAccess(1);
 
-      const queryStr = mockedExecuteQuery.mock.calls[0]![0] as string;
+      const queryStr = mockedExecuteQuery.mock.calls[1]![0] as string;
       expect(queryStr).toContain('roles');
       expect(queryStr).toContain('classes');
       expect(queryStr).toContain('schools');
