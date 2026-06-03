@@ -82,4 +82,19 @@ async function setAdmin(user: number | string, admin: boolean) {
   );
 }
 
-export default { createAccount, getAccountId, isAdmin, setAdmin };
+async function deleteAccount(accountId: number) {
+  const connection = await getConnection();
+  try {
+    await connection.beginTransaction();
+    await connection.execute('delete from roles where account_id = ?', [accountId]);
+    await connection.execute('delete from accounts where account_id = ?', [accountId]);
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export default { createAccount, getAccountId, isAdmin, setAdmin, deleteAccount };

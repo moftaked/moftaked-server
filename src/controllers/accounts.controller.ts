@@ -240,6 +240,37 @@ export async function assignPersonToClass(req: Request, res: Response, next: Nex
   }
 }
 
+export async function deleteAccountById(req: Request, res: Response, next: NextFunction) {
+  const accountId = parseInt(req.params['accountId']!, 10);
+  if (isNaN(accountId)) {
+    res.status(StatusCodes.BAD_REQUEST).json({
+      success: false,
+      message: 'Invalid account ID',
+    });
+    return;
+  }
+
+  const user = (req.res?.locals as authenticatedLocals)?.user;
+
+  try {
+    const requesterIsAdmin = await authService.isAdmin(user.sub);
+    if (!requesterIsAdmin) {
+      return next(createHttpError(StatusCodes.FORBIDDEN, 'Only admins can delete accounts'));
+    }
+
+    await accountsService.deleteAccount(accountId);
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: 'Account deleted successfully',
+    });
+  } catch (error) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Error deleting account',
+    });
+  }
+}
+
 export async function deleteRoleById(req: Request, res: Response, next: NextFunction) {
   const roleId = parseInt(req.params['roleId']!, 10);
   if (isNaN(roleId)) {

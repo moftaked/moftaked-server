@@ -6,7 +6,7 @@ import {
 import { Roles } from '../enums/roles.enum';
 import { createAccountSchema, setAdminSchema } from '../schemas/accounts.schemas';
 import { validateData } from '../middleware/validation.middleware';
-import { createAccount, getAccounts, getAllClasses, assignPersonToClass, unassignPersonFromClass, deleteRoleById, setAdmin } from '../controllers/accounts.controller';
+import { createAccount, getAccounts, getAllClasses, assignPersonToClass, unassignPersonFromClass, deleteRoleById, deleteAccountById, setAdmin } from '../controllers/accounts.controller';
 import { accountCreationRateLimiter, sensitiveOperationRateLimiter } from '../middleware/rate-limiting.middleware';
 
 const accountsRouter = express.Router();
@@ -29,6 +29,12 @@ accountsRouter.post('/assign-person', assignPersonToClass);
 accountsRouter.post('/unassign-person', unassignPersonFromClass);
 
 accountsRouter.delete('/roles/:roleId', deleteRoleById);
+
+accountsRouter.delete(
+  '/:accountId',
+  sensitiveOperationRateLimiter,
+  deleteAccountById,
+);
 
 accountsRouter.post(
   '/set-admin',
