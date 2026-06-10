@@ -3,7 +3,6 @@ import { CreatePersonDto, UpdatePersonDto } from '../schemas/persons.schemas';
 import personsService from '../services/persons.service';
 import { NextFunction, Request, Response } from 'express';
 import { Err } from 'result2';
-import { JwtPayload } from 'jsonwebtoken';
 import classesService from '../services/classes.service';
 import { authenticatedLocals } from '../middleware/authorization.middleware';
 import authService from '../services/auth.service';
@@ -113,8 +112,8 @@ export function updatePerson(type: 'student' | 'teacher') {
 }
 
 export function servePhoto(
-  req: Request<any, any, any, { size?: string; token?: string }>,
-  res: Response,
+  req: Request<any, any, any, { size?: string }>,
+  res: Response<any, authenticatedLocals>,
   next: NextFunction,
 ) {
   const filename = req.params.filename;
@@ -124,18 +123,7 @@ export function servePhoto(
   const size = (req.query.size ?? filename.match(/-(sm|md|lg)\.webp$/)?.[1] ?? 'md') as SizeKey;
   if (!(size in IMAGE_SIZES)) return next(Err(StatusCodes.BAD_REQUEST));
 
-  const header = req.headers.authorization;
-  let token = header?.startsWith('Bearer ') ? header.slice(7) : req.query.token;
-  if (!token) return next(Err(StatusCodes.UNAUTHORIZED));
-
-  let decodedToken: JwtPayload;
-  try {
-    decodedToken = authService.verify(token);
-  } catch {
-    return next(Err(StatusCodes.UNAUTHORIZED));
-  }
-
-  const user = decodedToken['payload'] as { sub: number; username: string };
+  const userId = res.locals.user.sub;
 
   personsService.getPersonIdByPhoto(base).then(personId => {
     if (!personId) return next(createHttpError(StatusCodes.NOT_FOUND, 'Photo not found'));
@@ -144,7 +132,7 @@ export function servePhoto(
       if (personClasses.length === 0) return next(createHttpError(StatusCodes.FORBIDDEN, 'Not authorized'));
 
       authService.isInAnyClass(
-        user.sub,
+        userId,
         personClasses.map(c => c.class_id),
         [Roles.teacher, Roles.leader, Roles.manager],
       ).then(authorized => {
