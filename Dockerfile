@@ -3,6 +3,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --ignore-scripts
 COPY . .
+RUN mkdir -p /app/public /app/migrations
 RUN npm run compile
 
 FROM node:20-alpine
