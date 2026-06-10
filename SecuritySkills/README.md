@@ -44,8 +44,11 @@ mkdir -p .claude/skills && cp -r skills/*/* .claude/skills/
 **Gemini CLI**
 
 ```bash
-# Reference skills via @ commands
-cp -r skills/ ~/.gemini/skills/
+# Global install — reference skills via @ commands
+mkdir -p ~/.gemini/skills && cp -r skills/*/* ~/.gemini/skills/
+
+# Or project-local
+mkdir -p .gemini/skills && cp -r skills/*/* .gemini/skills/
 ```
 
 **Cursor**

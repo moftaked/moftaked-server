@@ -23,7 +23,16 @@ async function getDistricts() {
   return districts;
 }
 
+async function deleteDistrict(districtId: number) {
+  await executeQuery(
+    `DELETE FROM districts WHERE district_id = ?;`,
+    [districtId],
+  );
+  dataVersionsService.touchDistricts().catch(() => {});
+}
+
 export default {
   createDistrict,
   getDistricts,
+  deleteDistrict,
 };

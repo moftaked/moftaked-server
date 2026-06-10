@@ -9,3 +9,4 @@ uploads
 private-key.pem
 public-key.pem
 .deployed-passwords
+.old-db-password
