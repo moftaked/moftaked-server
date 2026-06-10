@@ -274,6 +274,27 @@ async function deletePersonIfNotInAnyClass(personId: number) {
   }
 }
 
+interface personIdByPhoto extends RowDataPacket {
+  person_id: number;
+}
+
+async function getPersonIdByPhoto(photoLink: string) {
+  const base = photoLink.replace(/-(sm|md|lg)\.webp$/, '').replace(/\.webp$/, '');
+  const results = await executeQuery<personIdByPhoto[]>(
+    'select person_id from persons where photo_link = ?',
+    [base],
+  );
+  return results.length > 0 ? results[0]!.person_id : null;
+}
+
+async function getAllJoinedClasses(personId: number) {
+  const results = await executeQuery<classIds[]>(
+    'select class_id from person_class where person_id = ?',
+    [personId],
+  );
+  return results;
+}
+
 export default {
   createPerson,
   getPersonById,
@@ -283,4 +304,6 @@ export default {
   getJoinedClasses,
   getPersonClasses,
   unassignPerson,
+  getPersonIdByPhoto,
+  getAllJoinedClasses,
 };

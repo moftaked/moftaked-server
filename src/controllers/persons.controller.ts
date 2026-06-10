@@ -5,9 +5,13 @@ import { NextFunction, Request, Response } from 'express';
 import { Err } from 'result2';
 import classesService from '../services/classes.service';
 import { authenticatedLocals } from '../middleware/authorization.middleware';
+import authService from '../services/auth.service';
+import { Roles } from '../enums/roles.enum';
+import createHttpError from 'http-errors';
 import path from 'path';
 import fs from 'fs';
-import { processAndSaveImage, deleteImageVariants } from '../middleware/image-upload.middleware';
+import { processAndSaveImage, deleteImageVariants, sizedFilename, IMAGE_SIZES } from '../middleware/image-upload.middleware';
+import type { SizeKey } from '../middleware/image-upload.middleware';
 import dataVersionsService from '../services/data-versions.service';
 
 export function createPerson(type: 'student' | 'teacher') {
@@ -105,6 +109,42 @@ export function updatePerson(type: 'student' | 'teacher') {
       .status(StatusCodes.OK)
       .json({ success: true, message: 'Person updated successfully' });
   };
+}
+
+export function servePhoto(
+  req: Request<any, any, any, { size?: string }>,
+  res: Response<any, authenticatedLocals>,
+  next: NextFunction,
+) {
+  const user = res.locals.user;
+  const filename = req.params.filename;
+  if (!filename) return next(Err(StatusCodes.BAD_REQUEST));
+
+  const base = filename.replace(/-(sm|md|lg)\.webp$/, '').replace(/\.webp$/, '');
+  const size = (req.query.size ?? filename.match(/-(sm|md|lg)\.webp$/)?.[1] ?? 'md') as SizeKey;
+  if (!(size in IMAGE_SIZES)) return next(Err(StatusCodes.BAD_REQUEST));
+
+  personsService.getPersonIdByPhoto(base).then(personId => {
+    if (!personId) return next(createHttpError(StatusCodes.NOT_FOUND, 'Photo not found'));
+
+    personsService.getAllJoinedClasses(personId).then(personClasses => {
+      if (personClasses.length === 0) return next(createHttpError(StatusCodes.FORBIDDEN, 'Not authorized'));
+
+      authService.isInAnyClass(
+        user.sub,
+        personClasses.map(c => c.class_id),
+        [Roles.teacher, Roles.leader, Roles.manager],
+      ).then(authorized => {
+        if (!authorized) return next(createHttpError(StatusCodes.FORBIDDEN, 'Not authorized'));
+
+        const sizedFile = sizedFilename(base, size);
+        const filePath = path.resolve('uploads', 'images', sizedFile);
+        if (!fs.existsSync(filePath)) return next(createHttpError(StatusCodes.NOT_FOUND, 'Photo file not found'));
+
+        res.sendFile(filePath);
+      });
+    });
+  });
 }
 
 export async function uploadPhoto(req: Request, res: Response) {

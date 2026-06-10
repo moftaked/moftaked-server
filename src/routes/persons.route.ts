@@ -18,6 +18,7 @@ import {
   updatePerson,
   uploadPhoto,
   uploadPersonPhoto,
+  servePhoto,
 } from '../controllers/persons.controller';
 import { upload } from '../middleware/image-upload.middleware';
 import { photoUploadRateLimiter } from '../middleware/rate-limiting.middleware';
@@ -25,6 +26,8 @@ import { photoUploadRateLimiter } from '../middleware/rate-limiting.middleware';
 const personsRouter = express.Router();
 
 personsRouter.use(isAuthenticated());
+
+personsRouter.get('/photos/:filename', servePhoto);
 
 personsRouter.post('/photos', photoUploadRateLimiter, upload.single('photo'), uploadPhoto);
 
