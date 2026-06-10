@@ -7,6 +7,7 @@ import {
   createDistrict,
   getDistricts,
   deleteDistrict,
+  mergeDistricts,
 } from '../controllers/districts.controller';
 
 const districtsRouter = express.Router();
@@ -18,5 +19,7 @@ districtsRouter.post('/', hasRole([Roles.manager]), validateData(createDistrictS
 districtsRouter.get('/', getDistricts);
 
 districtsRouter.delete('/:districtId', hasRole([Roles.manager, Roles.admin]), deleteDistrict);
+
+districtsRouter.post('/:sourceId/merge/:targetId', hasRole([Roles.manager, Roles.admin]), mergeDistricts);
 
 export { districtsRouter };
