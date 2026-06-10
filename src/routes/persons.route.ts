@@ -25,9 +25,9 @@ import { photoUploadRateLimiter } from '../middleware/rate-limiting.middleware';
 
 const personsRouter = express.Router();
 
-personsRouter.use(isAuthenticated());
-
 personsRouter.get('/photos/:filename', servePhoto);
+
+personsRouter.use(isAuthenticated());
 
 personsRouter.post('/photos', photoUploadRateLimiter, upload.single('photo'), uploadPhoto);
 
