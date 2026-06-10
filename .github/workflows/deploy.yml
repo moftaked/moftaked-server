@@ -1,18 +1,62 @@
-name: deploy
+name: CD - Build & Deploy
+
 on:
   push:
     branches: [express]
+
+env:
+  IMAGE_NAME: moftaked-server-express
+
 jobs:
   deploy:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
-      - name: Pull latest code in deployment directory
-        run: |
-          cd /opt/moftaked/api
-          git stash --include-untracked
-          git pull origin express
-          git stash pop || true
-      - name: Rebuild and restart API container
-        run: |
-          docker compose -f /opt/moftaked/docker/docker-compose.prod.yml up -d --build api
+      - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm test
+
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
+          docker tag ${{ env.IMAGE_NAME }}:${{ github.sha }} ${{ env.IMAGE_NAME }}:latest
+
+      - name: Save and compress image
+        run: |
+          docker save ${{ env.IMAGE_NAME }}:${{ github.sha }} ${{ env.IMAGE_NAME }}:latest | gzip > image.tar.gz
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Transfer image to server
+        run: |
+          scp -P ${{ secrets.SSH_PORT || '22' }} \
+            image.tar.gz \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/moftaked/docker/
+
+      - name: Deploy on server
+        run: |
+          ssh -i ~/.ssh/id_rsa \
+            -p ${{ secrets.SSH_PORT || '22' }} \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            set -e
+            cd /opt/moftaked/docker
+            echo "Loading Docker image..."
+            gunzip -c image.tar.gz | docker load
+            rm -f image.tar.gz
+            echo "Restarting API container..."
+            docker compose -f docker-compose.prod.yml up -d --force-recreate api
+            echo "Cleaning up old images..."
+            docker image prune -f
+            echo "Deployment complete."
+          EOF
