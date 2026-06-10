@@ -64,7 +64,14 @@ export async function deleteDistrict(req: Request, res: Response, next: NextFunc
       success: true,
       message: 'District deleted successfully',
     });
-  } catch {
+  } catch (error) {
+    if ((error as Error & { statusCode: number }).statusCode === 409) {
+      res.status(StatusCodes.CONFLICT).json({
+        success: false,
+        message: (error as Error).message,
+      });
+      return;
+    }
     next(createHttpError(StatusCodes.INTERNAL_SERVER_ERROR, 'Error deleting district'));
   }
 }

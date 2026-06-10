@@ -1,3 +1,4 @@
+import { RowDataPacket } from 'mysql2/promise';
 import { CreateDistrictDto } from '../schemas/districts.schemas';
 import { executeQuery, getConnection } from './database.service';
 import dataVersionsService from './data-versions.service';
@@ -46,6 +47,14 @@ async function mergeDistricts(sourceId: number, targetId: number) {
 }
 
 async function deleteDistrict(districtId: number) {
+  const rows = await executeQuery<RowDataPacket[]>(
+    `SELECT COUNT(*) as cnt FROM persons WHERE district_id = ?;`,
+    [districtId],
+  );
+  const cnt = (rows[0] as Record<string, number>)['cnt'];
+  if (cnt && cnt > 0) {
+    throw Object.assign(new Error(`District has ${cnt} person(s) assigned`), { statusCode: 409, personCount: cnt });
+  }
   await executeQuery(
     `DELETE FROM districts WHERE district_id = ?;`,
     [districtId],
