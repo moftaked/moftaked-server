@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import 'dotenv/config';
+import cookieParser from 'cookie-parser';
 import { init } from './services/database.service';
 import { DbConfig } from './types';
 import authService from './services/auth.service';
@@ -52,6 +53,7 @@ app.use(helmet({
 app.use(cors(corsOptions));
 app.use(express.static('public'));
 app.use(express.json());
+app.use(cookieParser());
 
 app.use(auditMiddleware);
 
@@ -71,6 +73,12 @@ auditLogService.ensureTable().then(() => {
   console.log('audit_logs table ensured');
 }).catch((err) => {
   console.error('Failed to ensure audit_logs table:', err);
+});
+
+authService.ensureRefreshTokensTable().then(() => {
+  console.log('refresh_tokens table ensured');
+}).catch((err) => {
+  console.error('Failed to ensure refresh_tokens table:', err);
 });
 
 app.listen(port, () => {
