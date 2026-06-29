@@ -22,6 +22,7 @@ describe('Events Controller', () => {
   describe('getEvents', () => {
     it('should call eventsService.getEvents with the correct parameters', async () => {
       mockedRolesService.getHighestRole.mockResolvedValue(Roles.teacher);
+      mockedEventsService.getEvents.mockResolvedValue({ studentEvents: [], teacherEvents: [], className: 'الصف الأول' } as any);
       const req = {
         params: {
           classId: '1',

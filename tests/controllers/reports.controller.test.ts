@@ -13,7 +13,7 @@ import {
   getEventAttendanceTrends,
   getAbsentees,
   getPersonAttendanceHistory,
-  getChronicAbsentees,
+  getRangedAbsentees,
   getSchoolClassComparison,
   getUserAvailableDates,
 } from '../../src/controllers/reports.controller';
@@ -705,7 +705,7 @@ describe('Reports Controller', () => {
 
       await (getPersonAttendanceHistory as any)(req, res, next);
 
-      expect(mockedReportsService.getPersonAttendanceHistory).toHaveBeenCalledWith(7, 'student', 20);
+      expect(mockedReportsService.getPersonAttendanceHistory).toHaveBeenCalledWith(7, 'student', 20, undefined, undefined);
       expect(res.status).toHaveBeenCalledWith(StatusCodes.OK);
       expect(res.json).toHaveBeenCalledWith({ success: true, data: mockData });
     });
@@ -770,7 +770,7 @@ describe('Reports Controller', () => {
 
       await (getPersonAttendanceHistory as any)(req, res, next);
 
-      expect(mockedReportsService.getPersonAttendanceHistory).toHaveBeenCalledWith(7, 'student', 20);
+      expect(mockedReportsService.getPersonAttendanceHistory).toHaveBeenCalledWith(7, 'student', 20, undefined, undefined);
     });
 
     it('should forward service errors to next', async () => {
@@ -790,13 +790,13 @@ describe('Reports Controller', () => {
     });
   });
 
-  // ─── getChronicAbsentees ───────────────────────────────────────────────
+  // ─── getRangedAbsentees ───────────────────────────────────────────────
 
-  describe('getChronicAbsentees()', () => {
+  describe('getRangedAbsentees()', () => {
     it('should return 200 with chronic absentees for leader', async () => {
       mockedReportsService.getUserClassRole.mockResolvedValueOnce('leader');
       const mockData = [{ person_id: 1, person_name: 'أحمد', rate: 30 }];
-      mockedReportsService.getChronicAbsentees.mockResolvedValueOnce(mockData as any);
+      mockedReportsService.getRangedAbsentees.mockResolvedValueOnce(mockData as any);
 
       const req = {
         params: { classId: '10' },
@@ -805,10 +805,10 @@ describe('Reports Controller', () => {
       const res = createMockRes();
       const next = createMockNext();
 
-      await (getChronicAbsentees as any)(req, res, next);
+      await (getRangedAbsentees as any)(req, res, next);
 
       expect(mockedReportsService.getUserClassRole).toHaveBeenCalledWith(100, 10);
-      expect(mockedReportsService.getChronicAbsentees).toHaveBeenCalledWith(10, 'student', 50);
+      expect(mockedReportsService.getRangedAbsentees).toHaveBeenCalledWith(10, 'student', 50, undefined, undefined);
       expect(res.status).toHaveBeenCalledWith(StatusCodes.OK);
     });
 
@@ -820,7 +820,7 @@ describe('Reports Controller', () => {
       const res = createMockRes();
       const next = createMockNext();
 
-      await (getChronicAbsentees as any)(req, res, next);
+      await (getRangedAbsentees as any)(req, res, next);
 
       const error = (next as jest.Mock).mock.calls[0]![0] as any;
       expect(error.statusCode || error.status).toBe(StatusCodes.BAD_REQUEST);
@@ -836,7 +836,7 @@ describe('Reports Controller', () => {
       const res = createMockRes();
       const next = createMockNext();
 
-      await (getChronicAbsentees as any)(req, res, next);
+      await (getRangedAbsentees as any)(req, res, next);
 
       const error = (next as jest.Mock).mock.calls[0]![0] as any;
       expect(error.statusCode || error.status).toBe(StatusCodes.FORBIDDEN);
@@ -852,7 +852,7 @@ describe('Reports Controller', () => {
       const res = createMockRes();
       const next = createMockNext();
 
-      await (getChronicAbsentees as any)(req, res, next);
+      await (getRangedAbsentees as any)(req, res, next);
 
       const error = (next as jest.Mock).mock.calls[0]![0] as any;
       expect(error.statusCode || error.status).toBe(StatusCodes.FORBIDDEN);
@@ -860,7 +860,7 @@ describe('Reports Controller', () => {
 
     it('should default type to "student", threshold to 50', async () => {
       mockedReportsService.getUserClassRole.mockResolvedValueOnce('manager');
-      mockedReportsService.getChronicAbsentees.mockResolvedValueOnce([] as any);
+      mockedReportsService.getRangedAbsentees.mockResolvedValueOnce([] as any);
 
       const req = {
         params: { classId: '10' },
@@ -869,9 +869,9 @@ describe('Reports Controller', () => {
       const res = createMockRes();
       const next = createMockNext();
 
-      await (getChronicAbsentees as any)(req, res, next);
+      await (getRangedAbsentees as any)(req, res, next);
 
-      expect(mockedReportsService.getChronicAbsentees).toHaveBeenCalledWith(10, 'student', 50);
+      expect(mockedReportsService.getRangedAbsentees).toHaveBeenCalledWith(10, 'student', 50, undefined, undefined);
     });
 
     it('should forward service errors to next', async () => {
@@ -885,7 +885,7 @@ describe('Reports Controller', () => {
       const res = createMockRes();
       const next = createMockNext();
 
-      await (getChronicAbsentees as any)(req, res, next);
+      await (getRangedAbsentees as any)(req, res, next);
 
       expect(next).toHaveBeenCalledWith(error);
     });

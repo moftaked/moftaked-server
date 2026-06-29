@@ -1006,9 +1006,9 @@ describe('Reports Service', () => {
     });
   });
 
-  // ─── getChronicAbsentees() ──────────────────────────────────────────────
+  // ─── getRangedAbsentees() ──────────────────────────────────────────────
 
-  describe('getChronicAbsentees()', () => {
+  describe('getRangedAbsentees()', () => {
     it('should return chronic absentees with computed rate', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([
         {
@@ -1017,7 +1017,7 @@ describe('Reports Service', () => {
         },
       ] as any);
 
-      const result = await reportsService.getChronicAbsentees(10, 'student');
+      const result = await reportsService.getRangedAbsentees(10, 'student');
 
       expect(result).toHaveLength(1);
       expect(result[0]!.person_id).toBe(1);
@@ -1030,7 +1030,7 @@ describe('Reports Service', () => {
     it('should pass classId (3x), personType (2x), and threshold to the query', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
-      await reportsService.getChronicAbsentees(10, 'student', 50);
+      await reportsService.getRangedAbsentees(10, 'student', 50);
 
       const params = mockedExecuteQuery.mock.calls[0]![1];
       expect(params).toEqual([10, 10, 'student', 'student', 10, 50]);
@@ -1039,7 +1039,7 @@ describe('Reports Service', () => {
     it('should default threshold to 50%', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
-      await reportsService.getChronicAbsentees(10, 'student');
+      await reportsService.getRangedAbsentees(10, 'student');
 
       const params = mockedExecuteQuery.mock.calls[0]![1];
       // threshold is the last param
@@ -1049,7 +1049,7 @@ describe('Reports Service', () => {
     it('should return empty array when no chronic absentees', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
-      const result = await reportsService.getChronicAbsentees(10, 'student');
+      const result = await reportsService.getRangedAbsentees(10, 'student');
 
       expect(result).toEqual([]);
     });
@@ -1062,7 +1062,7 @@ describe('Reports Service', () => {
         },
       ] as any);
 
-      const result = await reportsService.getChronicAbsentees(10, 'student');
+      const result = await reportsService.getRangedAbsentees(10, 'student');
 
       expect(result[0]!.rate).toBe(0);
     });
@@ -1070,7 +1070,7 @@ describe('Reports Service', () => {
     it('should use HAVING to filter by attendance threshold', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
-      await reportsService.getChronicAbsentees(10, 'student', 50);
+      await reportsService.getRangedAbsentees(10, 'student', 50);
 
       const queryStr = mockedExecuteQuery.mock.calls[0]![0] as string;
       expect(queryStr).toContain('HAVING');
@@ -1080,7 +1080,7 @@ describe('Reports Service', () => {
     it('should order by attendance rate ascending', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
-      await reportsService.getChronicAbsentees(10, 'student');
+      await reportsService.getRangedAbsentees(10, 'student');
 
       const queryStr = mockedExecuteQuery.mock.calls[0]![0] as string;
       expect(queryStr).toContain('ORDER BY');
@@ -1091,7 +1091,7 @@ describe('Reports Service', () => {
       mockedExecuteQuery.mockRejectedValueOnce(new Error('DB error') as never);
 
       await expect(
-        reportsService.getChronicAbsentees(10, 'student'),
+        reportsService.getRangedAbsentees(10, 'student'),
       ).rejects.toThrow('DB error');
     });
   });
