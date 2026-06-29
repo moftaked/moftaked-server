@@ -274,7 +274,7 @@ export async function getPersonAttendanceHistory(
     { personId: string },
     any,
     any,
-    { type?: string; limit?: string }
+    { type?: string; limit?: string; start_date?: string; end_date?: string }
   >,
   res: Response<unknown, authenticatedLocals>,
   next: NextFunction,
@@ -289,6 +289,8 @@ export async function getPersonAttendanceHistory(
 
     const personType = req.query.type || "student";
     const limit = parseInt(req.query.limit || "20");
+    const startDate = req.query.start_date;
+    const endDate = req.query.end_date;
 
     const role = await reportsService.getUserPersonRole(
       res.locals.user.sub,
@@ -305,6 +307,8 @@ export async function getPersonAttendanceHistory(
       personId,
       personType,
       limit,
+      startDate,
+      endDate,
     );
 
     if (!data) {
@@ -318,16 +322,16 @@ export async function getPersonAttendanceHistory(
 }
 
 // ---------------------------------------------------------------------------
-// GET /reports/class/:classId/chronic-absentees?type=&threshold=&last=
-// Chronic absentees (below attendance threshold)
+// GET /reports/class/:classId/ranged-absentees?type=&threshold=&start_date=&end_date=
+// Ranged absentees (below attendance threshold for a date range)
 // ---------------------------------------------------------------------------
 
-export async function getChronicAbsentees(
+export async function getRangedAbsentees(
   req: Request<
     { classId: string },
     any,
     any,
-    { type?: string; threshold?: string; last?: string }
+    { type?: string; threshold?: string; start_date?: string; end_date?: string }
   >,
   res: Response<unknown, authenticatedLocals>,
   next: NextFunction,
@@ -346,18 +350,22 @@ export async function getChronicAbsentees(
       return next(
         createHttpError(
           StatusCodes.FORBIDDEN,
-          "Only leaders and managers can view chronic absentees",
+          "Only leaders and managers can view ranged absentees",
         ),
       );
     }
 
     const personType = req.query.type || "student";
     const threshold = parseInt(req.query.threshold || "50");
+    const startDate = req.query.start_date;
+    const endDate = req.query.end_date;
 
-    const data = await reportsService.getChronicAbsentees(
+    const data = await reportsService.getRangedAbsentees(
       classId,
       personType,
       threshold,
+      startDate,
+      endDate,
     );
     res.status(StatusCodes.OK).json({ success: true, data });
   } catch (err) {
@@ -399,6 +407,43 @@ export async function getSchoolClassComparison(
 
     const date = req.query.date || new Date().toISOString().slice(0, 10);
     const data = await reportsService.getSchoolClassComparison(schoolId, date);
+    res.status(StatusCodes.OK).json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GET /reports/class/:classId/absence-report?date=
+// Full absence report for a class on a given date (leader / manager)
+// ---------------------------------------------------------------------------
+
+export async function getAbsenceReport(
+  req: Request<{ classId: string }, any, any, { date: string }>,
+  res: Response<unknown, authenticatedLocals>,
+  next: NextFunction,
+) {
+  try {
+    const classId = parseInt(req.params.classId);
+    if (isNaN(classId)) {
+      return next(createHttpError(StatusCodes.BAD_REQUEST, "Invalid class ID"));
+    }
+
+    const role = await reportsService.getUserClassRole(
+      res.locals.user.sub,
+      classId,
+    );
+    if (!role || role === "teacher") {
+      return next(
+        createHttpError(
+          StatusCodes.FORBIDDEN,
+          "Only leaders and managers can view absence reports",
+        ),
+      );
+    }
+
+    const date = req.query.date || new Date().toISOString().slice(0, 10);
+    const data = await reportsService.getAbsenceReport(classId, date);
     res.status(StatusCodes.OK).json({ success: true, data });
   } catch (err) {
     next(err);

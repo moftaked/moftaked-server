@@ -587,6 +587,8 @@ async function getPersonAttendanceHistory(
   personId: number,
   personType: string,
   limit: number = 20,
+  startDate?: string,
+  endDate?: string,
 ) {
   // Get person info
   const personInfo = await executeQuery<RowDataPacket[]>(
@@ -635,6 +637,20 @@ async function getPersonAttendanceHistory(
     }[];
   }[] = [];
 
+  const dateClauses: string[] = [];
+  const dateParams: any[] = [];
+
+  if (startDate) {
+    dateClauses.push("eo.occurence_date >= ?");
+    dateParams.push(startDate);
+  }
+  if (endDate) {
+    dateClauses.push("eo.occurence_date <= ?");
+    dateParams.push(endDate);
+  }
+
+  const dateFilter = dateClauses.length > 0 ? "AND " + dateClauses.join(" AND ") : "";
+
   for (const event of events) {
     const history = await executeQuery<RowDataPacket[]>(
       `
@@ -648,10 +664,11 @@ async function getPersonAttendanceHistory(
         eo.event_occurence_id = a.event_occurence_id AND
         a.person_id = ?
       WHERE eo.event_id = ?
+      ${dateFilter}
       ORDER BY eo.occurence_date DESC
       LIMIT ${Number(limit)};
       `,
-      [personId, event['event_id']],
+      [personId, event['event_id'], ...dateParams],
     );
 
     const totalOccurrences = history.length;
@@ -719,18 +736,36 @@ async function getClassAvailableDates(classId: number, limit: number = 30) {
 }
 
 // ---------------------------------------------------------------------------
-// Chronic Absentees (manager/leader feature)
+// Ranged Absentees (manager/leader feature)
 // ---------------------------------------------------------------------------
 
 /**
  * Returns people who have attended less than a threshold percentage
- * of the last N occurrences. Helps identify chronic absentees.
+ * of occurrences within a given date range.
  */
-async function getChronicAbsentees(
+async function getRangedAbsentees(
   classId: number,
   personType: string,
   thresholdPercent: number = 50,
+  startDate?: string,
+  endDate?: string,
 ) {
+  const dateClauses: string[] = [];
+  const dateParams: any[] = [];
+
+  if (startDate) {
+    dateClauses.push("eo2.occurence_date >= ?");
+    dateParams.push(startDate);
+  }
+  if (endDate) {
+    dateClauses.push("eo2.occurence_date <= ?");
+    dateParams.push(endDate);
+  }
+
+  const dateFilter = dateClauses.length > 0
+    ? "AND " + dateClauses.join(" AND ")
+    : "";
+
   const results = await executeQuery<RowDataPacket[]>(
     `
     SELECT
@@ -753,6 +788,7 @@ async function getChronicAbsentees(
         WHERE events.class_id = ?
         ORDER BY occurence_date DESC
       ) ranked ON eo2.event_id = ranked.event_id
+      ${dateFilter}
       GROUP BY eo2.event_id, eo2.event_occurence_id
     ) eo ON e.event_id = eo.event_id
     INNER JOIN person_class pc ON
@@ -770,7 +806,7 @@ async function getChronicAbsentees(
       AND (attended_count / total_occurrences * 100) < ?
     ORDER BY (attended_count / total_occurrences) ASC, p.person_name;
     `,
-    [classId, classId, personType, personType, classId, thresholdPercent],
+    [classId, classId, ...dateParams, personType, personType, classId, thresholdPercent],
   );
 
   return results.map(r => ({
@@ -993,6 +1029,91 @@ async function getUserAvailableDates(accountId: number) {
   return results;
 }
 
+// ---------------------------------------------------------------------------
+// Absence Report (leader / manager feature)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns all absent persons across all events for a class on a given date,
+ * grouped by event and person type, with absence reasons.
+ */
+async function getAbsenceReport(classId: number, date: string) {
+  const results = await executeQuery<RowDataPacket[]>(
+    `
+    SELECT
+      p.person_id,
+      p.person_name,
+      pc.type as person_type,
+      e.event_id,
+      e.event_name,
+      aa.reason as absence_reason,
+      GROUP_CONCAT(DISTINCT pn.phone_number SEPARATOR ', ') as phone_numbers
+    FROM events e
+    INNER JOIN event_occurence eo ON
+      e.event_id = eo.event_id AND
+      eo.occurence_date = ?
+    INNER JOIN person_class pc ON
+      e.class_id = pc.class_id AND
+      pc.class_id = ? AND
+      (e.type = 'all' OR e.type = pc.type)
+    INNER JOIN persons p ON pc.person_id = p.person_id
+    LEFT JOIN attendance a ON
+      eo.event_occurence_id = a.event_occurence_id AND
+      p.person_id = a.person_id
+    LEFT JOIN attendance_absence aa ON
+      eo.event_occurence_id = aa.event_occurence_id AND
+      p.person_id = aa.person_id
+    LEFT JOIN phone_numbers pn ON p.person_id = pn.person_id
+    WHERE a.person_id IS NULL
+    GROUP BY p.person_id, p.person_name, pc.type, e.event_id, e.event_name, aa.reason
+    ORDER BY e.event_name, pc.type, p.person_name
+    `,
+    [date, classId],
+  );
+
+  const eventMap = new Map<number, {
+    event_id: number;
+    event_name: string;
+    students: { person_id: number; person_name: string; absence_reason: string | null; phone_numbers: string | null }[];
+    teachers: { person_id: number; person_name: string; absence_reason: string | null; phone_numbers: string | null }[];
+  }>();
+
+  for (const row of results) {
+    let ev = eventMap.get(row['event_id']);
+    if (!ev) {
+      ev = { event_id: row['event_id'], event_name: row['event_name'], students: [], teachers: [] };
+      eventMap.set(row['event_id'], ev);
+    }
+    const person = {
+      person_id: row['person_id'],
+      person_name: row['person_name'],
+      absence_reason: row['absence_reason'] || null,
+      phone_numbers: row['phone_numbers'] || null,
+    };
+    if (row['person_type'] === 'student') {
+      ev.students.push(person);
+    } else {
+      ev.teachers.push(person);
+    }
+  }
+
+  const classInfo = await executeQuery<RowDataPacket[]>(
+    `SELECT c.class_id, c.class_name, s.school_name
+     FROM classes c
+     INNER JOIN schools s USING(school_id)
+     WHERE c.class_id = ?`,
+    [classId],
+  );
+
+  return {
+    class_id: classId,
+    class_name: classInfo[0]?.['class_name'] ?? '',
+    school_name: classInfo[0]?.['school_name'] ?? '',
+    date,
+    events: Array.from(eventMap.values()),
+  };
+}
+
 export default {
   getReportsAccess,
   getLeaderEventReport,
@@ -1003,8 +1124,9 @@ export default {
   getAbsentees,
   getPersonAttendanceHistory,
   getClassAvailableDates,
-  getChronicAbsentees,
+  getRangedAbsentees,
   getSchoolClassComparison,
+  getAbsenceReport,
   getUserClassRole,
   getUserPersonRole,
   isSchoolManager,

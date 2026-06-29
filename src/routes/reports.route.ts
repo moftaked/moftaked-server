@@ -10,8 +10,9 @@ import {
   getEventAttendanceTrends,
   getAbsentees,
   getPersonAttendanceHistory,
-  getChronicAbsentees,
+  getRangedAbsentees,
   getSchoolClassComparison,
+  getAbsenceReport,
 } from "../controllers/reports.controller";
 import { hasRole, isAuthenticated, isInClass, isInAttendanceEventClass, isInEventClass } from "../middleware/authorization.middleware";
 import { Roles } from "../enums/roles.enum";
@@ -59,9 +60,15 @@ reportsRouter.get(
 );
 
 reportsRouter.get(
-  "/class/:classId/chronic-absentees",
+  "/class/:classId/ranged-absentees",
   hasRole([Roles.leader, Roles.manager]),
-  getChronicAbsentees,
+  getRangedAbsentees,
+);
+
+reportsRouter.get(
+  "/class/:classId/absence-report",
+  hasRole([Roles.leader, Roles.manager]),
+  getAbsenceReport,
 );
 
 // ---------------------------------------------------------------------------

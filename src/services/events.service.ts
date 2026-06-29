@@ -5,6 +5,12 @@ import { eventTypes } from '../enums/eventTypes.enum';
 import dataVersionsService from './data-versions.service';
 
 async function getEvents(userType: Roles, classId: number) {
+  const classResult = await executeQuery<RowDataPacket[]>(
+    "SELECT class_name FROM classes WHERE class_id = ?",
+    [classId],
+  );
+  const className: string = classResult[0]?.['class_name'] || "";
+
   let query = `
     SELECT event_id, event_name, type from events
     WHERE class_id = ?`;
@@ -24,7 +30,7 @@ async function getEvents(userType: Roles, classId: number) {
       teacherEvents.push(event);
     }
   }
-  return { studentEvents, teacherEvents };
+  return { studentEvents, teacherEvents, className };
 }
 
 async function createEvent(
