@@ -2,6 +2,21 @@ import { RowDataPacket } from 'mysql2/promise';
 import { getConnection, executeQuery } from './database.service';
 import dataVersionsService from './data-versions.service';
 
+async function ensureAttendanceAbsenceTable(): Promise<void> {
+  await executeQuery(
+    `CREATE TABLE IF NOT EXISTS attendance_absence (
+      person_id int NOT NULL,
+      event_occurence_id int NOT NULL,
+      reason TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (person_id, event_occurence_id),
+      FOREIGN KEY (person_id) REFERENCES persons(person_id) ON DELETE CASCADE,
+      FOREIGN KEY (event_occurence_id) REFERENCES event_occurence(event_occurence_id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;`,
+  );
+}
+
 async function getClassIdFromEventOccurrence(eventOccurrenceId: number): Promise<number | null> {
   const rows = await executeQuery<RowDataPacket[]>(
     `SELECT class_id FROM event_occurence inner join events using(event_id) WHERE event_occurence_id = ?`,
@@ -20,7 +35,8 @@ async function getAttendance(
       select 
         persons.person_id, 
         persons.person_name, 
-        if(attendance.person_id is null, 0, 1) as attended 
+        if(attendance.person_id is null, 0, 1) as attended,
+        attendance_absence.reason as absence_reason
         from event_occurence 
         inner join events using(event_id)
         inner join person_class
@@ -32,6 +48,10 @@ async function getAttendance(
           on 
             attendance.event_occurence_id = event_occurence.event_occurence_id 
             and attendance.person_id = persons.person_id 
+        left join attendance_absence
+          on
+            attendance_absence.event_occurence_id = event_occurence.event_occurence_id
+            and attendance_absence.person_id = persons.person_id
         where event_occurence.event_occurence_id=?
         order by persons.person_name;
 
@@ -75,6 +95,7 @@ async function patchAttendance(
   absent: number[] | undefined,
   eventOccurrenceId: number,
   type: 'student' | 'teacher',
+  reasons?: Record<number, string>,
 ) {
   const latest = await isLatestOccurrence(eventOccurrenceId);
   if (!latest) {
@@ -105,16 +126,34 @@ async function patchAttendance(
         `,
         [personId, eventOccurrenceId, personId, classId, type],
       );
+      await connection.execute(
+        `delete from attendance_absence where person_id=? and event_occurence_id=?;`,
+        [personId, eventOccurrenceId],
+      );
     }
   }
   if (absent) {
     for (const personId of absent) {
       await connection.execute(
-        `
-        delete from attendance where person_id=? and event_occurence_id=?;
-        `,
+        `delete from attendance where person_id=? and event_occurence_id=?;`,
         [personId, eventOccurrenceId],
       );
+    }
+  }
+  if (reasons) {
+    for (const [personIdStr, reason] of Object.entries(reasons)) {
+      const personId = Number(personIdStr);
+      if (reason) {
+        await connection.execute(
+          `insert into attendance_absence(person_id, event_occurence_id, reason) values(?, ?, ?) on duplicate key update reason=values(reason), updated_at=now();`,
+          [personId, eventOccurrenceId, reason],
+        );
+      } else {
+        await connection.execute(
+          `delete from attendance_absence where person_id=? and event_occurence_id=?;`,
+          [personId, eventOccurrenceId],
+        );
+      }
     }
   }
   await connection.commit();
@@ -124,4 +163,4 @@ async function patchAttendance(
   dataVersionsService.touchOccurrenceAttendance(eventOccurrenceId, type).catch(() => {});
 }
 
-export default { getAttendance, isLatestOccurrence, patchAttendance, getClassIdFromEventOccurrence };
+export default { getAttendance, isLatestOccurrence, patchAttendance, getClassIdFromEventOccurrence, ensureAttendanceAbsenceTable };

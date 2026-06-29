@@ -28,6 +28,7 @@ export function patchAttendance(type: 'student' | 'teacher') {
         body.absent,
         eventOccurrenceId,
         type,
+        body.reasons,
       );
       res.json({ message: 'Attendance updated successfully' });
     } catch (err) {

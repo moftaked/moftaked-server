@@ -301,8 +301,8 @@ describe('Attendance Service', () => {
       expect(mockConnection.commit).toHaveBeenCalledTimes(1);
       expect(mockConnection.release).toHaveBeenCalledTimes(1);
 
-      // 1 execute for class_id + 2 executes for attended (INSERT IGNORE)
-      expect(mockConnection.execute).toHaveBeenCalledTimes(3);
+      // 1 class_id + 2 attended (INSERT IGNORE + DELETE attendance_absence each)
+      expect(mockConnection.execute).toHaveBeenCalledTimes(5);
     });
 
     it('should delete attendance for absent persons when latest', async () => {
@@ -324,8 +324,8 @@ describe('Attendance Service', () => {
 
       await attendanceService.patchAttendance([1, 2], [3], 100, 'student');
 
-      // 1 class_id + 2 attended INSERT + 1 absent DELETE = 4
-      expect(mockConnection.execute).toHaveBeenCalledTimes(4);
+      // 1 class_id + 2 attended (INSERT IGNORE + DELETE attendance_absence each) + 1 absent DELETE = 6
+      expect(mockConnection.execute).toHaveBeenCalledTimes(6);
     });
 
     it('should use INSERT IGNORE for attended persons', async () => {
@@ -476,14 +476,15 @@ describe('Attendance Service', () => {
 
       await attendanceService.patchAttendance([1, 2, 3], undefined, 100, 'student');
 
-      // 1 class_id lookup + 3 individual INSERTs
-      expect(mockConnection.execute).toHaveBeenCalledTimes(4);
+      // 1 class_id lookup + 3 attended (INSERT IGNORE + DELETE attendance_absence each)
+      expect(mockConnection.execute).toHaveBeenCalledTimes(7);
 
-      // Verify each INSERT is for a different person
-      for (let i = 1; i <= 3; i++) {
-        const call = mockConnection.execute.mock.calls[i]!;
+      // Verify each INSERT is for a different person (calls at indices 1, 3, 5)
+      const expectedPersonIds = [1, 2, 3];
+      for (let i = 0; i < 3; i++) {
+        const call = mockConnection.execute.mock.calls[1 + i * 2]!;
         const params = call[1] as number[];
-        expect(params[0]).toBe(i); // personId
+        expect(params[0]).toBe(expectedPersonIds[i]); // personId
         expect(params[1]).toBe(100); // occurrenceId
       }
     });

@@ -43,7 +43,7 @@ describe('Attendance Controller', () => {
         await handler(req, res, next);
 
         expect(mockedAttendanceService.patchAttendance)
-        .toHaveBeenCalledWith([1, 2, 3], [4, 5], 12, type);
+        .toHaveBeenCalledWith([1, 2, 3], [4, 5], 12, type, undefined);
       });
     });
 

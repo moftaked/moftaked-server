@@ -767,6 +767,7 @@ describe('Reports Service', () => {
         person_name: 'أحمد',
         phone_numbers: '0101, 0102',
         district_name: 'المنطقة الأولى',
+        absence_reason: null,
       });
     });
 

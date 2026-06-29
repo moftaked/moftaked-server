@@ -521,7 +521,8 @@ async function getAbsentees(
       p.person_name,
       pc.type as person_type,
       GROUP_CONCAT(pn.phone_number SEPARATOR ', ') as phone_numbers,
-      d.district_name
+      d.district_name,
+      aa.reason as absence_reason
     FROM events e
     INNER JOIN event_occurence eo ON
       e.event_id = eo.event_id AND
@@ -535,10 +536,13 @@ async function getAbsentees(
     LEFT JOIN attendance a ON
       eo.event_occurence_id = a.event_occurence_id AND
       p.person_id = a.person_id
+    LEFT JOIN attendance_absence aa ON
+      eo.event_occurence_id = aa.event_occurence_id AND
+      p.person_id = aa.person_id
     LEFT JOIN phone_numbers pn ON p.person_id = pn.person_id
     LEFT JOIN districts d ON p.district_id = d.district_id
     WHERE a.person_id IS NULL
-    GROUP BY p.person_id, p.person_name, pc.type, d.district_name
+    GROUP BY p.person_id, p.person_name, pc.type, d.district_name, aa.reason
     ORDER BY pc.type, p.person_name;
     `,
     [eventId, date, classId],
@@ -549,6 +553,7 @@ async function getAbsentees(
     person_name: r['person_name'],
     phone_numbers: r['phone_numbers'],
     district_name: r['district_name'],
+    absence_reason: r['absence_reason'] || null,
   }));
 
   const teachers = results.filter(r => r['person_type'] === 'teacher').map(r => ({
@@ -556,6 +561,7 @@ async function getAbsentees(
     person_name: r['person_name'],
     phone_numbers: r['phone_numbers'],
     district_name: r['district_name'],
+    absence_reason: r['absence_reason'] || null,
   }));
 
   return {

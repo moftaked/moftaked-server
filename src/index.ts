@@ -11,6 +11,7 @@ import { handleError } from './middleware/errors.middleware';
 import { auditMiddleware } from './middleware/audit.middleware';
 import dataVersionsService from './services/data-versions.service';
 import auditLogService from './services/audit-log.service';
+import attendanceService from './services/attendance.service';
 
 if (!process.env['DB_HOST']) throw new Error('DB_HOST is not defined');
 if (!process.env['DB_NAME']) throw new Error('DB_NAME is not defined');
@@ -79,6 +80,12 @@ authService.ensureRefreshTokensTable().then(() => {
   console.log('refresh_tokens table ensured');
 }).catch((err) => {
   console.error('Failed to ensure refresh_tokens table:', err);
+});
+
+attendanceService.ensureAttendanceAbsenceTable().then(() => {
+  console.log('attendance_absence table ensured');
+}).catch((err) => {
+  console.error('Failed to ensure attendance_absence table:', err);
 });
 
 app.listen(port, () => {
