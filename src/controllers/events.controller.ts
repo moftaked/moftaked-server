@@ -16,10 +16,12 @@ export async function getEvents(req: Request, res: Response, next: NextFunction)
   if (userRole == undefined) {
     return next(createHttpError(StatusCodes.FORBIDDEN, 'You do not have permission to access this resource'));
   }
+  const { studentEvents, teacherEvents, className } = await eventsService.getEvents(userRole, classId);
   res.status(StatusCodes.OK).json({
     success: true,
-    data: await eventsService.getEvents(userRole, classId),
+    data: { studentEvents, teacherEvents },
     role: userRole,
+    className,
   });
 }
 
