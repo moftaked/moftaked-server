@@ -278,7 +278,7 @@ describe('Reports Controller', () => {
       await (getClassAttendanceSummary as any)(req, res, next);
 
       expect(mockedReportsService.getUserClassRole).toHaveBeenCalledWith(100, 10);
-      expect(mockedReportsService.getClassAttendanceSummary).toHaveBeenCalledWith(10, '2025-01-15');
+      expect(mockedReportsService.getClassAttendanceSummary).toHaveBeenCalledWith(10, '2025-01-15', 'leader');
       expect(res.status).toHaveBeenCalledWith(StatusCodes.OK);
       expect(res.json).toHaveBeenCalledWith({ success: true, data: mockData, role: 'leader' });
     });
@@ -329,7 +329,7 @@ describe('Reports Controller', () => {
 
       await (getClassAttendanceSummary as any)(req, res, next);
 
-      expect(mockedReportsService.getClassAttendanceSummary).toHaveBeenCalledWith(10, today);
+      expect(mockedReportsService.getClassAttendanceSummary).toHaveBeenCalledWith(10, today, 'teacher');
     });
 
     it('should forward service errors to next', async () => {
@@ -598,8 +598,10 @@ describe('Reports Controller', () => {
       expect(error.statusCode || error.status).toBe(StatusCodes.BAD_REQUEST);
     });
 
-    it('should call next with 403 when user role is teacher', async () => {
+    it('should return 200 for teacher with empty teacher data', async () => {
       mockedReportsService.getUserClassRole.mockResolvedValueOnce('teacher');
+      const mockData = { students: [{ person_id: 1, person_name: 'أحمد' }], teachers: [{ person_id: 2, person_name: 'خالد' }], total_absent_students: 1, total_absent_teachers: 1 };
+      mockedReportsService.getAbsentees.mockResolvedValueOnce(mockData as any);
 
       const req = {
         params: { classId: '10' },
@@ -610,8 +612,16 @@ describe('Reports Controller', () => {
 
       await (getAbsentees as any)(req, res, next);
 
-      const error = (next as jest.Mock).mock.calls[0]![0] as any;
-      expect(error.statusCode || error.status).toBe(StatusCodes.FORBIDDEN);
+      expect(res.status).toHaveBeenCalledWith(StatusCodes.OK);
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        data: {
+          students: [{ person_id: 1, person_name: 'أحمد' }],
+          teachers: [],
+          total_absent_students: 1,
+          total_absent_teachers: 0,
+        },
+      });
     });
 
     it('should call next with 403 when user has no role', async () => {
@@ -826,8 +836,10 @@ describe('Reports Controller', () => {
       expect(error.statusCode || error.status).toBe(StatusCodes.BAD_REQUEST);
     });
 
-    it('should call next with 403 when user role is teacher', async () => {
+    it('should return 200 for teacher with student type forced', async () => {
       mockedReportsService.getUserClassRole.mockResolvedValueOnce('teacher');
+      const mockData = [{ person_id: 1, person_name: 'أحمد', rate: 30 }];
+      mockedReportsService.getRangedAbsentees.mockResolvedValueOnce(mockData as any);
 
       const req = {
         params: { classId: '10' },
@@ -838,8 +850,9 @@ describe('Reports Controller', () => {
 
       await (getRangedAbsentees as any)(req, res, next);
 
-      const error = (next as jest.Mock).mock.calls[0]![0] as any;
-      expect(error.statusCode || error.status).toBe(StatusCodes.FORBIDDEN);
+      expect(mockedReportsService.getRangedAbsentees).toHaveBeenCalledWith(10, 'student', 50, undefined, undefined);
+      expect(res.status).toHaveBeenCalledWith(StatusCodes.OK);
+      expect(res.json).toHaveBeenCalledWith({ success: true, data: mockData });
     });
 
     it('should call next with 403 when no role', async () => {

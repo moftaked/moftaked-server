@@ -55,19 +55,19 @@ reportsRouter.get(
 
 reportsRouter.get(
   "/class/:classId/absentees",
-  hasRole([Roles.leader, Roles.manager]),
+  hasRole([Roles.teacher, Roles.leader, Roles.manager]),
   getAbsentees,
 );
 
 reportsRouter.get(
   "/class/:classId/ranged-absentees",
-  hasRole([Roles.leader, Roles.manager]),
+  hasRole([Roles.teacher, Roles.leader, Roles.manager]),
   getRangedAbsentees,
 );
 
 reportsRouter.get(
   "/class/:classId/absence-report",
-  hasRole([Roles.leader, Roles.manager]),
+  hasRole([Roles.teacher, Roles.leader, Roles.manager]),
   getAbsenceReport,
 );
 

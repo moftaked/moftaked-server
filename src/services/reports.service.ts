@@ -325,7 +325,7 @@ async function getSchoolOverAllStats(schoolId: number, date: string) {
  * Returns a per-event attendance summary for a class on a given date.
  * Shows each event, how many attended, total, and the attendance percentage.
  */
-async function getClassAttendanceSummary(classId: number, date: string) {
+async function getClassAttendanceSummary(classId: number, date: string, role?: string) {
   const results = await executeQuery<RowDataPacket[]>(
     `
     SELECT
@@ -405,12 +405,21 @@ async function getClassAttendanceSummary(classId: number, date: string) {
     [classId],
   );
 
+  const filteredEvents = role === 'teacher'
+    ? events
+        .filter((ev) => ev.event_type !== 'teacher')
+        .map((ev) => ({
+          ...ev,
+          breakdown: ev.breakdown.filter((b) => b.person_type !== 'teacher'),
+        }))
+    : events;
+
   return {
     class_id: classId,
     class_name: classInfo[0]?.['class_name'] ?? '',
     school_name: classInfo[0]?.['school_name'] ?? '',
     date,
-    events,
+    events: filteredEvents,
   };
 }
 

@@ -124,7 +124,7 @@ export async function getClassAttendanceSummary(
     }
 
     const date = req.query.date || new Date().toISOString().slice(0, 10);
-    const data = await reportsService.getClassAttendanceSummary(classId, date);
+    const data = await reportsService.getClassAttendanceSummary(classId, date, role);
     res.status(StatusCodes.OK).json({ success: true, data, role });
   } catch (err) {
     next(err);
@@ -247,17 +247,22 @@ export async function getAbsentees(
       res.locals.user.sub,
       classId,
     );
-    if (!role || role === "teacher") {
+    if (!role) {
       return next(
         createHttpError(
           StatusCodes.FORBIDDEN,
-          "Only leaders and managers can view absentees",
+          "No access to this class",
         ),
       );
     }
 
     const date = req.query.date || new Date().toISOString().slice(0, 10);
     const data = await reportsService.getAbsentees(classId, eventId, date);
+    if (role === "teacher") {
+      data.students = data.students ?? [];
+      data.teachers = [];
+      data.total_absent_teachers = 0;
+    }
     res.status(StatusCodes.OK).json({ success: true, data });
   } catch (err) {
     next(err);
@@ -346,16 +351,16 @@ export async function getRangedAbsentees(
       res.locals.user.sub,
       classId,
     );
-    if (!role || role === "teacher") {
+    if (!role) {
       return next(
         createHttpError(
           StatusCodes.FORBIDDEN,
-          "Only leaders and managers can view ranged absentees",
+          "No access to this class",
         ),
       );
     }
 
-    const personType = req.query.type || "student";
+    const personType = role === "teacher" ? "student" : (req.query.type || "student");
     const threshold = parseInt(req.query.threshold || "50");
     const startDate = req.query.start_date;
     const endDate = req.query.end_date;
@@ -433,17 +438,23 @@ export async function getAbsenceReport(
       res.locals.user.sub,
       classId,
     );
-    if (!role || role === "teacher") {
+    if (!role) {
       return next(
         createHttpError(
           StatusCodes.FORBIDDEN,
-          "Only leaders and managers can view absence reports",
+          "No access to this class",
         ),
       );
     }
 
     const date = req.query.date || new Date().toISOString().slice(0, 10);
     const data = await reportsService.getAbsenceReport(classId, date);
+    if (role === "teacher") {
+      for (const ev of data.events ?? []) {
+        ev.students = ev.students ?? [];
+        ev.teachers = [];
+      }
+    }
     res.status(StatusCodes.OK).json({ success: true, data });
   } catch (err) {
     next(err);
