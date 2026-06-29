@@ -28,9 +28,12 @@ describe('Auth Controller', () => {
       const res = {
         status: jest.fn().mockReturnThis(),
         json: jest.fn(),
+        cookie: jest.fn().mockReturnThis(),
+        clearCookie: jest.fn().mockReturnThis(),
       } as any as Response;
       mockedAuthService.signIn.mockResolvedValue(Ok({
         access_token: 'mock_token',
+        refresh_token: 'mock_refresh',
         user_id: 123,
         is_admin: false,
         roles: '["user"]',
@@ -56,6 +59,8 @@ describe('Auth Controller', () => {
         status: jest.fn().mockReturnThis(),
         end: jest.fn(),
         json: jest.fn(),
+        cookie: jest.fn().mockReturnThis(),
+        clearCookie: jest.fn().mockReturnThis(),
       } as any as Response;
 
       const next = jest.fn();

@@ -81,6 +81,7 @@ describe('Auth Service', () => {
       if (result.isOk()) {
         expect(result.unwrap()).toEqual({
           access_token: 'mock-jwt-token',
+          refresh_token: expect.any(String),
           user_id: 123,
           is_admin: false,
           roles: JSON.stringify([{ class_id: 1, role: 'teacher', school_id: 1 }]),
@@ -158,7 +159,7 @@ describe('Auth Service', () => {
       expect(mockedJwt.sign).toHaveBeenCalledWith(
         { payload: { sub: 123, username: 'testuser' } },
         'test-jwt-secret',
-        { expiresIn: '1h', algorithm: 'HS256' },
+        { expiresIn: '5m', algorithm: 'HS256' },
       );
     });
 
