@@ -7,17 +7,23 @@ import { Err } from 'result2';
 const REFRESH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 
 function setRefreshCookie(res: Response, token: string) {
+  const isSecure = process.env['NODE_ENV'] === 'production';
   res.cookie('refresh_token', token, {
     httpOnly: true,
-    secure: true,
-    sameSite: 'none',
+    secure: isSecure,
+    sameSite: isSecure ? 'none' : 'lax',
     path: '/auth',
     maxAge: REFRESH_COOKIE_MAX_AGE,
   });
 }
 
 function clearRefreshCookie(res: Response) {
-  res.clearCookie('refresh_token', { path: '/auth' });
+  const isSecure = process.env['NODE_ENV'] === 'production';
+  res.clearCookie('refresh_token', {
+    path: '/auth',
+    secure: isSecure,
+    sameSite: isSecure ? 'none' : 'lax',
+  });
 }
 
 function stripRefreshToken(data: Record<string, unknown>) {
