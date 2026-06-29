@@ -1027,26 +1027,16 @@ describe('Reports Service', () => {
       expect(result[0]!.phone_numbers).toBe('0101');
     });
 
-    it('should pass classId (3x), personType (2x), and threshold to the query', async () => {
-      mockedExecuteQuery.mockResolvedValueOnce([] as any);
-
-      await reportsService.getRangedAbsentees(10, 'student', 50);
-
-      const params = mockedExecuteQuery.mock.calls[0]![1];
-      expect(params).toEqual([10, 10, 'student', 'student', 10, 50]);
-    });
-
-    it('should default threshold to 50%', async () => {
+    it('should pass classId (3x) and personType (2x) to the query', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
       await reportsService.getRangedAbsentees(10, 'student');
 
       const params = mockedExecuteQuery.mock.calls[0]![1];
-      // threshold is the last param
-      expect(params![params!.length - 1]).toBe(50);
+      expect(params).toEqual([10, 10, 'student', 'student', 10]);
     });
 
-    it('should return empty array when no chronic absentees', async () => {
+    it('should return empty array when no data', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
       const result = await reportsService.getRangedAbsentees(10, 'student');
@@ -1067,24 +1057,24 @@ describe('Reports Service', () => {
       expect(result[0]!.rate).toBe(0);
     });
 
-    it('should use HAVING to filter by attendance threshold', async () => {
+    it('should use HAVING total_occurrences > 0', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
-      await reportsService.getRangedAbsentees(10, 'student', 50);
+      await reportsService.getRangedAbsentees(10, 'student');
 
       const queryStr = mockedExecuteQuery.mock.calls[0]![0] as string;
       expect(queryStr).toContain('HAVING');
       expect(queryStr).toContain('total_occurrences > 0');
     });
 
-    it('should order by attendance rate ascending', async () => {
+    it('should order by person_name and event_name', async () => {
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
       await reportsService.getRangedAbsentees(10, 'student');
 
       const queryStr = mockedExecuteQuery.mock.calls[0]![0] as string;
       expect(queryStr).toContain('ORDER BY');
-      expect(queryStr).toContain('ASC');
+      expect(queryStr).toContain('p.person_name, e.event_name');
     });
 
     it('should propagate DB errors', async () => {

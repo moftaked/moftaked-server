@@ -749,13 +749,12 @@ async function getClassAvailableDates(classId: number, limit: number = 30) {
 // ---------------------------------------------------------------------------
 
 /**
- * Returns people who have attended less than a threshold percentage
- * of occurrences within a given date range.
+ * Returns attendance data for all persons in a class within a date range,
+ * grouped by person and event.
  */
 async function getRangedAbsentees(
   classId: number,
   personType: string,
-  thresholdPercent: number = 50,
   startDate?: string,
   endDate?: string,
 ) {
@@ -812,10 +811,9 @@ async function getRangedAbsentees(
     WHERE e.class_id = ?
     GROUP BY p.person_id, p.person_name, e.event_id, e.event_name
     HAVING total_occurrences > 0
-      AND (attended_count / total_occurrences * 100) < ?
-    ORDER BY (attended_count / total_occurrences) ASC, p.person_name;
+    ORDER BY p.person_name, e.event_name;
     `,
-    [classId, classId, ...dateParams, personType, personType, classId, thresholdPercent],
+    [classId, classId, ...dateParams, personType, personType, classId],
   );
 
   return results.map(r => ({

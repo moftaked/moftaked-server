@@ -327,8 +327,8 @@ export async function getPersonAttendanceHistory(
 }
 
 // ---------------------------------------------------------------------------
-// GET /reports/class/:classId/ranged-absentees?type=&threshold=&start_date=&end_date=
-// Ranged absentees (below attendance threshold for a date range)
+// GET /reports/class/:classId/ranged-absentees?type=&start_date=&end_date=
+// Ranged absentees (attendance data for a date range)
 // ---------------------------------------------------------------------------
 
 export async function getRangedAbsentees(
@@ -336,7 +336,7 @@ export async function getRangedAbsentees(
     { classId: string },
     any,
     any,
-    { type?: string; threshold?: string; start_date?: string; end_date?: string }
+    { type?: string; start_date?: string; end_date?: string }
   >,
   res: Response<unknown, authenticatedLocals>,
   next: NextFunction,
@@ -361,14 +361,12 @@ export async function getRangedAbsentees(
     }
 
     const personType = role === "teacher" ? "student" : (req.query.type || "student");
-    const threshold = parseInt(req.query.threshold || "50");
     const startDate = req.query.start_date;
     const endDate = req.query.end_date;
 
     const data = await reportsService.getRangedAbsentees(
       classId,
       personType,
-      threshold,
       startDate,
       endDate,
     );

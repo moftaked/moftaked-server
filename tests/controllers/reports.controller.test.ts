@@ -810,7 +810,7 @@ describe('Reports Controller', () => {
 
       const req = {
         params: { classId: '10' },
-        query: { type: 'student', threshold: '50', last: '5' },
+        query: { type: 'student', last: '5' },
       } as any;
       const res = createMockRes();
       const next = createMockNext();
@@ -818,7 +818,7 @@ describe('Reports Controller', () => {
       await (getRangedAbsentees as any)(req, res, next);
 
       expect(mockedReportsService.getUserClassRole).toHaveBeenCalledWith(100, 10);
-      expect(mockedReportsService.getRangedAbsentees).toHaveBeenCalledWith(10, 'student', 50, undefined, undefined);
+      expect(mockedReportsService.getRangedAbsentees).toHaveBeenCalledWith(10, 'student', undefined, undefined);
       expect(res.status).toHaveBeenCalledWith(StatusCodes.OK);
     });
 
@@ -850,7 +850,7 @@ describe('Reports Controller', () => {
 
       await (getRangedAbsentees as any)(req, res, next);
 
-      expect(mockedReportsService.getRangedAbsentees).toHaveBeenCalledWith(10, 'student', 50, undefined, undefined);
+      expect(mockedReportsService.getRangedAbsentees).toHaveBeenCalledWith(10, 'student', undefined, undefined);
       expect(res.status).toHaveBeenCalledWith(StatusCodes.OK);
       expect(res.json).toHaveBeenCalledWith({ success: true, data: mockData });
     });
@@ -871,7 +871,7 @@ describe('Reports Controller', () => {
       expect(error.statusCode || error.status).toBe(StatusCodes.FORBIDDEN);
     });
 
-    it('should default type to "student", threshold to 50', async () => {
+    it('should default type to "student"', async () => {
       mockedReportsService.getUserClassRole.mockResolvedValueOnce('manager');
       mockedReportsService.getRangedAbsentees.mockResolvedValueOnce([] as any);
 
@@ -884,7 +884,7 @@ describe('Reports Controller', () => {
 
       await (getRangedAbsentees as any)(req, res, next);
 
-      expect(mockedReportsService.getRangedAbsentees).toHaveBeenCalledWith(10, 'student', 50, undefined, undefined);
+      expect(mockedReportsService.getRangedAbsentees).toHaveBeenCalledWith(10, 'student', undefined, undefined);
     });
 
     it('should forward service errors to next', async () => {
