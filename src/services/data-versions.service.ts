@@ -53,6 +53,10 @@ function occurrenceAttendanceKey(occurrenceId: number, type?: 'student' | 'teach
   return `occurrence_${occurrenceId}_attendance`;
 }
 
+function personProfileKey(personId: number, type: 'student' | 'teacher'): string {
+  return `person_${type}_${personId}`;
+}
+
 const DISTRICTS_KEY = 'districts';
 const CLASSES_KEY = 'classes';
 
@@ -62,6 +66,10 @@ async function touchClassStudents(classId: number): Promise<void> {
 
 async function touchClassTeachers(classId: number): Promise<void> {
   await touch(classTeachersKey(classId));
+}
+
+async function touchPersonProfile(personId: number, type: 'student' | 'teacher'): Promise<void> {
+  await touch(personProfileKey(personId, type));
 }
 
 async function touchClassEvents(classId: number): Promise<void> {
@@ -147,6 +155,20 @@ async function getTimestampsForUser(classIds: number[]): Promise<Record<string, 
     occurrenceIds = occRows.map((r) => r['event_occurence_id'] as number);
   }
 
+  // Gather person IDs for those classes
+  let personIds: { person_id: number; type: 'student' | 'teacher' }[] = [];
+  if (classIds.length > 0) {
+    const cPlaceholders = classIds.map(() => '?').join(', ');
+    const personRows = await executeQuery<RowDataPacket[]>(
+      `SELECT DISTINCT person_id, type FROM person_class WHERE class_id IN (${cPlaceholders});`,
+      classIds,
+    );
+    personIds = personRows.map((r) => ({
+      person_id: r['person_id'] as number,
+      type: r['type'] as 'student' | 'teacher',
+    }));
+  }
+
   // Build the full list of resource keys
   const keys: string[] = [CLASSES_KEY, DISTRICTS_KEY];
   for (const cid of classIds) {
@@ -161,6 +183,9 @@ async function getTimestampsForUser(classIds: number[]): Promise<Record<string, 
     keys.push(occurrenceAttendanceKey(oid, 'student'));
     keys.push(occurrenceAttendanceKey(oid, 'teacher'));
   }
+  for (const p of personIds) {
+    keys.push(personProfileKey(p.person_id, p.type));
+  }
 
   return getTimestamps(keys);
 }
@@ -173,6 +198,7 @@ export default {
   touchClassEvents,
   touchEventOccurrences,
   touchOccurrenceAttendance,
+  touchPersonProfile,
   touchDistricts,
   touchClasses,
   getTimestamps,
@@ -183,6 +209,7 @@ export default {
   classEventsKey,
   eventOccurrencesKey,
   occurrenceAttendanceKey,
+  personProfileKey,
   DISTRICTS_KEY,
   CLASSES_KEY,
 };

@@ -222,12 +222,18 @@ export function uploadPersonPhoto(type: 'student' | 'teacher') {
 
       const allClasses = await personsService.getPersonClasses(personId) as any[];
       const touchKeys: string[] = [];
+      const touchedTypes = new Set<string>();
       for (const c of allClasses) {
         if (c.type === 'student') {
           touchKeys.push(dataVersionsService.classStudentsKey(c.class_id));
+          touchedTypes.add('student');
         } else if (c.type === 'teacher') {
           touchKeys.push(dataVersionsService.classTeachersKey(c.class_id));
+          touchedTypes.add('teacher');
         }
+      }
+      for (const t of touchedTypes) {
+        touchKeys.push(dataVersionsService.personProfileKey(personId, t as 'student' | 'teacher'));
       }
       if (touchKeys.length > 0) {
         dataVersionsService.touch(...touchKeys).catch(() => {});

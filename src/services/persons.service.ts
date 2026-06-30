@@ -129,18 +129,25 @@ async function updatePerson(personId: number, person: UpdatePersonDto) {
 
     await connection.commit();
 
-    // Touch data versions for all classes the person belongs to
+    // Touch data versions for all classes the person belongs to and the person profile
     const allClasses = await executeQuery<classIds[]>(
       'SELECT class_id, type FROM person_class WHERE person_id = ?',
       [personId],
     );
     const touchKeys: string[] = [];
+    const touchedTypes = new Set<string>();
     for (const c of allClasses) {
-      if (c['type'] === 'student') {
+      const ct = c['type'] as string;
+      if (ct === 'student') {
         touchKeys.push(dataVersionsService.classStudentsKey(c.class_id));
-      } else if (c['type'] === 'teacher') {
+        touchedTypes.add('student');
+      } else if (ct === 'teacher') {
         touchKeys.push(dataVersionsService.classTeachersKey(c.class_id));
+        touchedTypes.add('teacher');
       }
+    }
+    for (const t of touchedTypes) {
+      touchKeys.push(dataVersionsService.personProfileKey(personId, t as 'student' | 'teacher'));
     }
     if (touchKeys.length > 0) {
       dataVersionsService.touch(...touchKeys).catch(() => {});
