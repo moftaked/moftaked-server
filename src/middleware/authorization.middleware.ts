@@ -63,7 +63,7 @@ export function isInPersonClass(
     const user: { sub: number; username: string } = res.locals['user'];
 
     const personId = parseInt(req.params[urlParamName] || '', 10);
-    if (isNaN(personId)) throw new Error(`${StatusCodes.BAD_REQUEST}`);
+    if (isNaN(personId)) return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid person ID'));
     const personJoinedClasses = await personsService.getJoinedClasses(
       personId,
       type,

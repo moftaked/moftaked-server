@@ -243,24 +243,28 @@ describe('Authorization Middleware', () => {
       expect(callArg.status || callArg.statusCode).toBe(StatusCodes.FORBIDDEN);
     });
 
-    it('should throw when person ID param is NaN', async () => {
+    it('should call next with 400 when person ID param is NaN', async () => {
       mockReq.params = { studentId: 'not-a-number' };
 
       const middleware = isInPersonClass('studentId', 'student', [Roles.teacher]);
 
-      await expect(
-        middleware(mockReq as Request, mockRes as Response, mockNext),
-      ).rejects.toThrow();
+      await middleware(mockReq as Request, mockRes as Response, mockNext);
+
+      expect(mockNext).toHaveBeenCalledWith(
+        expect.objectContaining({ statusCode: 400 }),
+      );
     });
 
-    it('should throw when person ID param is missing', async () => {
+    it('should call next with 400 when person ID param is missing', async () => {
       mockReq.params = {};
 
       const middleware = isInPersonClass('studentId', 'student', [Roles.teacher]);
 
-      await expect(
-        middleware(mockReq as Request, mockRes as Response, mockNext),
-      ).rejects.toThrow();
+      await middleware(mockReq as Request, mockRes as Response, mockNext);
+
+      expect(mockNext).toHaveBeenCalledWith(
+        expect.objectContaining({ statusCode: 400 }),
+      );
     });
 
     it('should use the correct type when getting joined classes', async () => {
