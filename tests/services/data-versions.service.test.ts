@@ -454,14 +454,16 @@ describe('Data Versions Service', () => {
       mockedExecuteQuery.mockResolvedValueOnce([
         { event_occurence_id: 100 },
       ] as any);
+      // Person IDs for classes
+      mockedExecuteQuery.mockResolvedValueOnce([] as any);
       // getTimestamps final query
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
       await dataVersionsService.getTimestampsForUser([1]);
 
-      // The third call (getTimestamps) should include all the resource keys
-      const thirdCall = mockedExecuteQuery.mock.calls[2]!;
-      const keys = thirdCall[1] as string[];
+      // The fourth call (getTimestamps) should include all the resource keys
+      const fourthCall = mockedExecuteQuery.mock.calls[3]!;
+      const keys = fourthCall[1] as string[];
 
       // Should include global keys
       expect(keys).toContain('classes');
@@ -480,17 +482,19 @@ describe('Data Versions Service', () => {
     it('should handle classes with no events', async () => {
       // No events
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
+      // Person IDs for classes
+      mockedExecuteQuery.mockResolvedValueOnce([] as any);
       // getTimestamps query (no occurrence query since no events)
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
       await dataVersionsService.getTimestampsForUser([1]);
 
-      // Should be 2 calls: events query + timestamps query (no occurrences query)
-      expect(mockedExecuteQuery).toHaveBeenCalledTimes(2);
+      // Should be 3 calls: events query + person query + timestamps query
+      expect(mockedExecuteQuery).toHaveBeenCalledTimes(3);
 
-      // The second call (getTimestamps) should only have class-level + global keys
-      const secondCall = mockedExecuteQuery.mock.calls[1]!;
-      const keys = secondCall[1] as string[];
+      // The third call (getTimestamps) should only have class-level + global keys
+      const thirdCall = mockedExecuteQuery.mock.calls[2]!;
+      const keys = thirdCall[1] as string[];
 
       expect(keys).toContain('classes');
       expect(keys).toContain('districts');
@@ -509,15 +513,17 @@ describe('Data Versions Service', () => {
       ] as any);
       // No occurrences
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
+      // Person IDs for classes
+      mockedExecuteQuery.mockResolvedValueOnce([] as any);
       // getTimestamps query
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
       await dataVersionsService.getTimestampsForUser([1]);
 
-      expect(mockedExecuteQuery).toHaveBeenCalledTimes(3);
+      expect(mockedExecuteQuery).toHaveBeenCalledTimes(4);
 
-      const thirdCall = mockedExecuteQuery.mock.calls[2]!;
-      const keys = thirdCall[1] as string[];
+      const fourthCall = mockedExecuteQuery.mock.calls[3]!;
+      const keys = fourthCall[1] as string[];
 
       expect(keys).toContain('event_10_occurrences');
       // Should NOT contain occurrence keys
@@ -536,13 +542,15 @@ describe('Data Versions Service', () => {
         { event_occurence_id: 100 },
         { event_occurence_id: 200 },
       ] as any);
+      // Person IDs for classes
+      mockedExecuteQuery.mockResolvedValueOnce([] as any);
       // getTimestamps query
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 
       await dataVersionsService.getTimestampsForUser([1, 2]);
 
-      const thirdCall = mockedExecuteQuery.mock.calls[2]!;
-      const keys = thirdCall[1] as string[];
+      const fourthCall = mockedExecuteQuery.mock.calls[3]!;
+      const keys = fourthCall[1] as string[];
 
       // Global keys
       expect(keys).toContain('classes');
@@ -570,6 +578,8 @@ describe('Data Versions Service', () => {
       const now = new Date('2025-01-15T12:00:00.000Z');
 
       // Events
+      mockedExecuteQuery.mockResolvedValueOnce([] as any);
+      // Person IDs for classes
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
       // getTimestamps returns actual data
       mockedExecuteQuery.mockResolvedValueOnce([
@@ -603,6 +613,8 @@ describe('Data Versions Service', () => {
       mockedExecuteQuery.mockResolvedValueOnce([
         { event_occurence_id: 100 },
       ] as any);
+      // Person IDs for classes
+      mockedExecuteQuery.mockResolvedValueOnce([] as any);
       // getTimestamps
       mockedExecuteQuery.mockResolvedValueOnce([] as any);
 

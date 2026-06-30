@@ -41,6 +41,7 @@ describe('Persons Service', () => {
     mockedDataVersionsService.touch.mockReturnValue(Promise.resolve() as any);
     mockedDataVersionsService.classStudentsKey.mockImplementation((id: number) => `class_${id}_students`);
     mockedDataVersionsService.classTeachersKey.mockImplementation((id: number) => `class_${id}_teachers`);
+    mockedDataVersionsService.personProfileKey.mockImplementation((id: number, type: string) => `person_${type}_${id}`);
     mockedArabicSanitize.mockImplementation((str: string) => `sanitized_${str}`);
   });
 
@@ -457,9 +458,13 @@ describe('Persons Service', () => {
 
       expect(mockedDataVersionsService.classStudentsKey).toHaveBeenCalledWith(10);
       expect(mockedDataVersionsService.classTeachersKey).toHaveBeenCalledWith(20);
+      expect(mockedDataVersionsService.personProfileKey).toHaveBeenCalledWith(7, 'student');
+      expect(mockedDataVersionsService.personProfileKey).toHaveBeenCalledWith(7, 'teacher');
       expect(mockedDataVersionsService.touch).toHaveBeenCalledWith(
         'class_10_students',
         'class_20_teachers',
+        'person_student_7',
+        'person_teacher_7',
       );
     });
 
