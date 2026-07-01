@@ -59,6 +59,11 @@ function personProfileKey(personId: number, type: 'student' | 'teacher'): string
 
 const DISTRICTS_KEY = 'districts';
 const CLASSES_KEY = 'classes';
+const EQUIPMENT_GROUPS_KEY = 'equipment_groups';
+
+function equipmentGroupItemsKey(groupId: number): string {
+  return `equipment_group_${groupId}_items`;
+}
 
 async function touchClassStudents(classId: number): Promise<void> {
   await touch(classStudentsKey(classId));
@@ -90,6 +95,10 @@ async function touchOccurrenceAttendance(occurrenceId: number, type?: 'student' 
       occurrenceAttendanceKey(occurrenceId, 'teacher'),
     );
   }
+}
+
+async function touchEquipmentGroupItems(groupId: number): Promise<void> {
+  await touch(equipmentGroupItemsKey(groupId));
 }
 
 async function touchDistricts(): Promise<void> {
@@ -201,6 +210,7 @@ export default {
   touchPersonProfile,
   touchDistricts,
   touchClasses,
+  touchEquipmentGroupItems,
   getTimestamps,
   getTimestampsForUser,
   // Export key builders so controllers/services can build keys too
@@ -210,6 +220,8 @@ export default {
   eventOccurrencesKey,
   occurrenceAttendanceKey,
   personProfileKey,
+  equipmentGroupItemsKey,
   DISTRICTS_KEY,
   CLASSES_KEY,
+  EQUIPMENT_GROUPS_KEY,
 };

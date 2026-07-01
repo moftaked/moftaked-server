@@ -3,6 +3,7 @@ import attendanceRouter from './routes/attendance.route';
 import authRouter from './routes/auth.route';
 import classesRouter from './routes/classes.route';
 import { districtsRouter } from './routes/districts.route';
+import { equipmentRouter } from './routes/equipment.route';
 import eventsRouter from './routes/events.route';
 import { personsRouter } from './routes/persons.route';
 import reportsRouter from './routes/reports.route';
@@ -29,6 +30,10 @@ const routes = [
   {
     path: '/districts',
     router: districtsRouter
+  },
+  {
+    path: '/equipment',
+    router: equipmentRouter,
   },
   {
     path: '/events',

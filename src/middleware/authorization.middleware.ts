@@ -7,6 +7,7 @@ import personsService from '../services/persons.service';
 import attendanceService from '../services/attendance.service';
 import eventsService from '../services/events.service';
 import classesService from '../services/classes.service';
+import equipmentService from '../services/equipment.service';
 import createHttpError from 'http-errors';
 import { Err } from 'result2';
 
@@ -142,5 +143,61 @@ export function isInEventClass(authorizedRoles: Roles[]) {
     }
 
     return next(createHttpError(StatusCodes.FORBIDDEN, 'You are not authorized to access this event'));
+  };
+}
+
+export function isEquipmentOrganizer() {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const user: { sub: number; username: string } = res.locals['user'];
+    const raw = req.params['groupId'];
+    if (raw === undefined) return next(createHttpError(StatusCodes.BAD_REQUEST, 'Group ID is required'));
+    const groupId = parseInt(raw, 10);
+    if (isNaN(groupId)) return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid group ID'));
+
+    const admin = await authService.isAdmin(user.sub);
+    if (admin) return next();
+
+    const authorized = await equipmentService.isOrganizer(user.sub, groupId);
+    if (!authorized) return next(createHttpError(StatusCodes.FORBIDDEN, 'You are not authorized to manage this equipment group'));
+    next();
+  };
+}
+
+export function isEquipmentViewer() {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const user: { sub: number; username: string } = res.locals['user'];
+    const raw = req.params['groupId'];
+    if (raw === undefined) return next(createHttpError(StatusCodes.BAD_REQUEST, 'Group ID is required'));
+    const groupId = parseInt(raw, 10);
+    if (isNaN(groupId)) return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid group ID'));
+
+    const admin = await authService.isAdmin(user.sub);
+    if (admin) return next();
+
+    const authorized = await equipmentService.hasViewAccess(user.sub, groupId);
+    if (!authorized) return next(createHttpError(StatusCodes.FORBIDDEN, 'You are not authorized to access this equipment group'));
+    next();
+  };
+}
+
+export function isEquipmentPhotoViewer() {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const user: { sub: number; username: string } = res.locals['user'];
+    const filename = req.params['filename'];
+    if (!filename) return next(Err(StatusCodes.BAD_REQUEST));
+
+    const base = filename.replace(/-(sm|md|lg)\.webp$/, '').replace(/\.webp$/, '');
+    const equipmentId = await equipmentService.getEquipmentIdByPhoto(base);
+    if (!equipmentId) return next(createHttpError(StatusCodes.NOT_FOUND, 'Photo not found'));
+
+    const groupId = await equipmentService.getItemGroupId(equipmentId);
+    if (!groupId) return next(createHttpError(StatusCodes.NOT_FOUND, 'Equipment not found'));
+
+    const admin = await authService.isAdmin(user.sub);
+    if (admin) return next();
+
+    const authorized = await equipmentService.hasViewAccess(user.sub, groupId);
+    if (!authorized) return next(createHttpError(StatusCodes.FORBIDDEN, 'You are not authorized to access this equipment photo'));
+    next();
   };
 }
