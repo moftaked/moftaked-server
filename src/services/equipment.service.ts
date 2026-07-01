@@ -46,6 +46,7 @@ async function createGroup(data: CreateEquipmentGroupDto, createdBy: number): Pr
       [groupId, createdBy, 'organizer'],
     );
     await connection.commit();
+    dataVersionsService.touchEquipmentGroups().catch(() => {});
     dataVersionsService.touchEquipmentGroupItems(groupId).catch(() => {});
     return groupId;
   } catch (error) {
@@ -58,7 +59,7 @@ async function createGroup(data: CreateEquipmentGroupDto, createdBy: number): Pr
 
 async function getUserGroups(userId: number): Promise<RowDataPacket[]> {
   return executeQuery<RowDataPacket[]>(
-    `SELECT eg.group_id, eg.group_name
+    `SELECT eg.group_id, eg.group_name, egm.access_level
      FROM equipment_groups eg
      INNER JOIN equipment_group_members egm ON eg.group_id = egm.group_id
      WHERE egm.account_id = ?
@@ -79,6 +80,7 @@ async function updateGroup(groupId: number, data: UpdateEquipmentGroupDto): Prom
 async function deleteGroup(groupId: number): Promise<void> {
   await executeQuery('DELETE FROM equipment_groups WHERE group_id = ?', [groupId]);
   dataVersionsService.touchEquipmentGroupItems(groupId).catch(() => {});
+  dataVersionsService.touchEquipmentGroups().catch(() => {});
 }
 
 // ---- Subgroups ----

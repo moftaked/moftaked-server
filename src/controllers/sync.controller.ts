@@ -13,7 +13,10 @@ export async function getTimestamps(_req: Request, res: Response, _next: NextFun
   // Add equipment group timestamps
   const equipmentGroupIds = await equipmentService.getAccessibleGroupIds(userId);
   if (equipmentGroupIds.length > 0) {
-    const equipmentKeys = equipmentGroupIds.map(id => dataVersionsService.equipmentGroupItemsKey(id));
+    const equipmentKeys = [
+      dataVersionsService.EQUIPMENT_GROUPS_KEY,
+      ...equipmentGroupIds.map(id => dataVersionsService.equipmentGroupItemsKey(id)),
+    ];
     const equipmentTimestamps = await dataVersionsService.getTimestamps(equipmentKeys);
     Object.assign(timestamps, equipmentTimestamps);
   }

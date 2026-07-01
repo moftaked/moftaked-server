@@ -101,6 +101,10 @@ async function touchEquipmentGroupItems(groupId: number): Promise<void> {
   await touch(equipmentGroupItemsKey(groupId));
 }
 
+async function touchEquipmentGroups(): Promise<void> {
+  await touch(EQUIPMENT_GROUPS_KEY);
+}
+
 async function touchDistricts(): Promise<void> {
   await touch(DISTRICTS_KEY);
 }
@@ -211,6 +215,7 @@ export default {
   touchDistricts,
   touchClasses,
   touchEquipmentGroupItems,
+  touchEquipmentGroups,
   getTimestamps,
   getTimestampsForUser,
   // Export key builders so controllers/services can build keys too
