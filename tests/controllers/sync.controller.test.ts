@@ -2,14 +2,17 @@ import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals
 
 jest.mock('../../src/services/classes.service');
 jest.mock('../../src/services/data-versions.service');
+jest.mock('../../src/services/equipment.service');
 
 import { getTimestamps } from '../../src/controllers/sync.controller';
 import classesService from '../../src/services/classes.service';
 import dataVersionsService from '../../src/services/data-versions.service';
+import equipmentService from '../../src/services/equipment.service';
 import { StatusCodes } from 'http-status-codes';
 
 const mockedClassesService = classesService as jest.Mocked<typeof classesService>;
 const mockedDataVersionsService = dataVersionsService as jest.Mocked<typeof dataVersionsService>;
+const mockedEquipmentService = equipmentService as jest.Mocked<typeof equipmentService>;
 
 function createMockRes(userId: number = 100) {
   return {
@@ -28,6 +31,7 @@ function createMockNext() {
 describe('Sync Controller', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockedEquipmentService.getAccessibleGroupIds.mockResolvedValue([]);
   });
 
   afterEach(() => {
