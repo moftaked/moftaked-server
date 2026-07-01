@@ -1,4 +1,6 @@
 import { RowDataPacket } from 'mysql2';
+import { StatusCodes } from 'http-status-codes';
+import createHttpError from 'http-errors';
 import { executeQuery, getConnection } from './database.service';
 import dataVersionsService from './data-versions.service';
 import {
@@ -86,7 +88,7 @@ async function deleteGroup(groupId: number): Promise<void> {
 // ---- Subgroups ----
 
 async function createSubgroup(groupId: number, data: CreateSubgroupDto): Promise<number> {
-  const [result] = await executeQuery<RowDataPacket[]>(
+  const result = await executeQuery<RowDataPacket[]>(
     'INSERT INTO equipment_subgroups (group_id, name) VALUES (?, ?)',
     [groupId, data.name],
   );
@@ -120,9 +122,16 @@ async function deleteSubgroup(subgroupId: number, groupId: number): Promise<void
 // ---- Members ----
 
 async function addMember(groupId: number, data: AddMemberDto): Promise<void> {
+  const [account] = await executeQuery<RowDataPacket[]>(
+    'SELECT account_id FROM accounts WHERE username = ?',
+    [data.username],
+  );
+  if (!account) {
+    throw createHttpError(StatusCodes.NOT_FOUND, 'المستخدم غير موجود');
+  }
   await executeQuery(
     'INSERT INTO equipment_group_members (group_id, account_id, access_level) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE access_level = ?',
-    [groupId, data.account_id, data.access_level, data.access_level],
+    [groupId, account['account_id'], data.access_level, data.access_level],
   );
 }
 
@@ -154,7 +163,7 @@ async function removeMember(memberId: number, groupId: number): Promise<void> {
 // ---- Equipment Items ----
 
 async function createItem(groupId: number, data: CreateEquipmentDto): Promise<number> {
-  const [result] = await executeQuery<RowDataPacket[]>(
+  const result = await executeQuery<RowDataPacket[]>(
     'INSERT INTO equipment (group_id, subgroup_id, name, description, quantity) VALUES (?, ?, ?, ?, ?)',
     [groupId, data.subgroup_id ?? null, data.name, data.description ?? null, data.quantity],
   );
@@ -267,7 +276,51 @@ async function getAccessibleGroupIds(userId: number): Promise<number[]> {
   return rows.map(r => r['group_id']);
 }
 
+async function ensureTables(): Promise<void> {
+  await executeQuery(
+    `CREATE TABLE IF NOT EXISTS equipment_groups (
+      group_id INT AUTO_INCREMENT PRIMARY KEY,
+      group_name VARCHAR(255) NOT NULL,
+      created_by INT NOT NULL,
+      FOREIGN KEY (created_by) REFERENCES accounts(account_id)
+    )`,
+  );
+  await executeQuery(
+    `CREATE TABLE IF NOT EXISTS equipment_group_members (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      group_id INT NOT NULL,
+      account_id INT NOT NULL,
+      access_level ENUM('organizer', 'member') NOT NULL DEFAULT 'member',
+      FOREIGN KEY (group_id) REFERENCES equipment_groups(group_id) ON DELETE CASCADE,
+      FOREIGN KEY (account_id) REFERENCES accounts(account_id),
+      UNIQUE KEY unique_member (group_id, account_id)
+    )`,
+  );
+  await executeQuery(
+    `CREATE TABLE IF NOT EXISTS equipment_subgroups (
+      subgroup_id INT AUTO_INCREMENT PRIMARY KEY,
+      group_id INT NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      FOREIGN KEY (group_id) REFERENCES equipment_groups(group_id) ON DELETE CASCADE
+    )`,
+  );
+  await executeQuery(
+    `CREATE TABLE IF NOT EXISTS equipment (
+      equipment_id INT AUTO_INCREMENT PRIMARY KEY,
+      group_id INT NOT NULL,
+      subgroup_id INT DEFAULT NULL,
+      name VARCHAR(255) NOT NULL,
+      description TEXT,
+      quantity INT NOT NULL DEFAULT 1,
+      photo VARCHAR(255) DEFAULT NULL,
+      FOREIGN KEY (group_id) REFERENCES equipment_groups(group_id) ON DELETE CASCADE,
+      FOREIGN KEY (subgroup_id) REFERENCES equipment_subgroups(subgroup_id) ON DELETE SET NULL
+    )`,
+  );
+}
+
 export default {
+  ensureTables,
   isOrganizer,
   hasViewAccess,
   createGroup,

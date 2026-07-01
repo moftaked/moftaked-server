@@ -58,6 +58,6 @@ export interface EquipmentGroupMemberRow extends RowDataPacket {
   id: number;
   group_id: number;
   account_id: number;
-  access_level: 'organizer' | 'viewer';
+  access_level: 'organizer' | 'member';
   created_at: string;
 }

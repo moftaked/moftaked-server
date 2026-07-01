@@ -12,6 +12,7 @@ import { auditMiddleware } from './middleware/audit.middleware';
 import dataVersionsService from './services/data-versions.service';
 import auditLogService from './services/audit-log.service';
 import attendanceService from './services/attendance.service';
+import equipmentService from './services/equipment.service';
 
 if (!process.env['DB_HOST']) throw new Error('DB_HOST is not defined');
 if (!process.env['DB_NAME']) throw new Error('DB_NAME is not defined');
@@ -86,6 +87,12 @@ attendanceService.ensureAttendanceAbsenceTable().then(() => {
   console.log('attendance_absence table ensured');
 }).catch((err) => {
   console.error('Failed to ensure attendance_absence table:', err);
+});
+
+equipmentService.ensureTables().then(() => {
+  console.log('equipment tables ensured');
+}).catch((err) => {
+  console.error('Failed to ensure equipment tables:', err);
 });
 
 app.listen(port, () => {

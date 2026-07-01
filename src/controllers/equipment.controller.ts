@@ -283,7 +283,7 @@ export async function uploadItemPhoto(req: Request, res: Response, next: NextFun
     res.status(StatusCodes.OK).json({
       success: true,
       data: {
-        photo: baseFilename,
+        filename: baseFilename,
         photo_urls: {
           sm: `/equipment/photos/${getImageUrl(baseFilename, 'sm')}`,
           md: `/equipment/photos/${getImageUrl(baseFilename, 'md')}`,

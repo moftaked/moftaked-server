@@ -9,12 +9,12 @@ export const updateEquipmentGroupSchema = z.object({
 });
 
 export const addMemberSchema = z.object({
-  account_id: z.number().int().positive(),
-  access_level: z.enum(['organizer', 'viewer']),
+  username: z.string().min(1).max(255),
+  access_level: z.enum(['organizer', 'member']),
 });
 
 export const updateMemberSchema = z.object({
-  access_level: z.enum(['organizer', 'viewer']),
+  access_level: z.enum(['organizer', 'member']),
 });
 
 export const createSubgroupSchema = z.object({
