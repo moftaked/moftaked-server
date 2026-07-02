@@ -91,6 +91,11 @@ attendanceService.ensureAttendanceAbsenceTable().then(() => {
 
 equipmentService.ensureTables().then(() => {
   console.log('equipment tables ensured');
+  equipmentService.ensureAttachmentColumn().then(() => {
+    console.log('equipment attachment column ensured');
+  }).catch((err) => {
+    console.error('Failed to ensure equipment attachment column:', err);
+  });
 }).catch((err) => {
   console.error('Failed to ensure equipment tables:', err);
 });

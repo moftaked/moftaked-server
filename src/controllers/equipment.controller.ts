@@ -14,6 +14,9 @@ import {
   UpdateSubgroupDto,
   CreateEquipmentDto,
   UpdateEquipmentDto,
+  CreateAttachmentDto,
+  UpdateAttachmentDto,
+  UpdateItemParentDto,
 } from '../schemas/equipment.schemas';
 import {
   processAndSaveImage,
@@ -291,6 +294,73 @@ export async function uploadItemPhoto(req: Request, res: Response, next: NextFun
         },
       },
     });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// ---- Attachments ----
+
+export async function createAttachment(req: Request, res: Response, next: NextFunction) {
+  try {
+    const groupId = parseIntParam(req.params['groupId']);
+    if (groupId === undefined) return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid group ID'));
+
+    const itemId = parseIntParam(req.params['itemId']);
+    if (itemId === undefined) return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid item ID'));
+
+    const body: CreateAttachmentDto = req.body;
+    const equipmentId = await equipmentService.createItem(groupId, body as any);
+    await equipmentService.updateItemParent(equipmentId, groupId, itemId);
+    res.status(StatusCodes.CREATED).json({ success: true, data: { equipment_id: equipmentId } });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getAttachments(req: Request, res: Response, next: NextFunction) {
+  try {
+    const itemId = parseIntParam(req.params['itemId']);
+    if (itemId === undefined) return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid item ID'));
+
+    const attachments = await equipmentService.getItemAttachments(itemId);
+    res.status(StatusCodes.OK).json({ success: true, data: attachments });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateAttachment(req: Request, res: Response, next: NextFunction) {
+  try {
+    const groupId = parseIntParam(req.params['groupId']);
+    if (groupId === undefined) return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid group ID'));
+
+    const attachmentId = parseIntParam(req.params['attachmentId']);
+    if (attachmentId === undefined) return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid attachment ID'));
+
+    const body = req.body as UpdateAttachmentDto;
+    const { parent_equipment_id, ...itemFields } = body;
+    await equipmentService.updateItem(attachmentId, itemFields as any);
+    if (parent_equipment_id !== undefined) {
+      await equipmentService.updateItemParent(attachmentId, groupId, parent_equipment_id);
+    }
+    res.status(StatusCodes.OK).json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateItemParent(req: Request, res: Response, next: NextFunction) {
+  try {
+    const groupId = parseIntParam(req.params['groupId']);
+    if (groupId === undefined) return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid group ID'));
+
+    const itemId = parseIntParam(req.params['itemId']);
+    if (itemId === undefined) return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid item ID'));
+
+    const body: UpdateItemParentDto = req.body;
+    await equipmentService.updateItemParent(itemId, groupId, body.parent_equipment_id);
+    res.status(StatusCodes.OK).json({ success: true });
   } catch (error) {
     next(error);
   }

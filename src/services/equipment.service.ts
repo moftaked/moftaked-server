@@ -176,7 +176,7 @@ async function getItems(
   subgroupId?: number,
   search?: string,
 ): Promise<RowDataPacket[]> {
-  let query = `SELECT e.equipment_id, e.group_id, e.subgroup_id, e.name, e.description, e.quantity, e.photo
+  let query = `SELECT e.equipment_id, e.group_id, e.subgroup_id, e.parent_equipment_id, e.name, e.description, e.quantity, e.photo
                FROM equipment e
                WHERE e.group_id = ?`;
   const values: unknown[] = [groupId];
@@ -196,7 +196,7 @@ async function getItems(
 
 async function getItemById(itemId: number): Promise<RowDataPacket | undefined> {
   const rows = await executeQuery<RowDataPacket[]>(
-    `SELECT e.equipment_id, e.group_id, e.subgroup_id, e.name, e.description, e.quantity, e.photo
+    `SELECT e.equipment_id, e.group_id, e.subgroup_id, e.parent_equipment_id, e.name, e.description, e.quantity, e.photo
      FROM equipment e
      WHERE e.equipment_id = ?`,
     [itemId],
@@ -268,12 +268,46 @@ async function getEquipmentIdByPhoto(baseFilename: string): Promise<number | nul
   return rows[0] ? rows[0]['equipment_id'] : null;
 }
 
+// ---- Attachments ----
+
+async function getItemAttachments(itemId: number): Promise<RowDataPacket[]> {
+  return executeQuery<RowDataPacket[]>(
+    `SELECT equipment_id, group_id, subgroup_id, parent_equipment_id, name, description, quantity, photo
+     FROM equipment
+     WHERE parent_equipment_id = ?
+     ORDER BY name`,
+    [itemId],
+  );
+}
+
+async function updateItemParent(
+  itemId: number,
+  groupId: number,
+  parentEquipmentId: number | null,
+): Promise<void> {
+  await executeQuery(
+    'UPDATE equipment SET parent_equipment_id = ? WHERE equipment_id = ?',
+    [parentEquipmentId, itemId],
+  );
+  dataVersionsService.touchEquipmentGroupItems(groupId).catch(() => {});
+}
+
 async function getAccessibleGroupIds(userId: number): Promise<number[]> {
   const rows = await executeQuery<RowDataPacket[]>(
     'SELECT group_id FROM equipment_group_members WHERE account_id = ?',
     [userId],
   );
   return rows.map(r => r['group_id']);
+}
+
+async function ensureAttachmentColumn(): Promise<void> {
+  await executeQuery(
+    `ALTER TABLE equipment
+     ADD COLUMN parent_equipment_id INT DEFAULT NULL,
+     ADD FOREIGN KEY (parent_equipment_id) REFERENCES equipment(equipment_id) ON DELETE CASCADE`,
+  ).catch(() => {
+    // Column already exists — this is expected on subsequent starts
+  });
 }
 
 async function ensureTables(): Promise<void> {
@@ -309,18 +343,21 @@ async function ensureTables(): Promise<void> {
       equipment_id INT AUTO_INCREMENT PRIMARY KEY,
       group_id INT NOT NULL,
       subgroup_id INT DEFAULT NULL,
+      parent_equipment_id INT DEFAULT NULL,
       name VARCHAR(255) NOT NULL,
       description TEXT,
       quantity INT NOT NULL DEFAULT 1,
       photo VARCHAR(255) DEFAULT NULL,
       FOREIGN KEY (group_id) REFERENCES equipment_groups(group_id) ON DELETE CASCADE,
-      FOREIGN KEY (subgroup_id) REFERENCES equipment_subgroups(subgroup_id) ON DELETE SET NULL
+      FOREIGN KEY (subgroup_id) REFERENCES equipment_subgroups(subgroup_id) ON DELETE SET NULL,
+      FOREIGN KEY (parent_equipment_id) REFERENCES equipment(equipment_id) ON DELETE CASCADE
     )`,
   );
 }
 
 export default {
   ensureTables,
+  ensureAttachmentColumn,
   isOrganizer,
   hasViewAccess,
   createGroup,
@@ -343,5 +380,7 @@ export default {
   deleteItem,
   updateItemPhoto,
   getEquipmentIdByPhoto,
+  getItemAttachments,
+  updateItemParent,
   getAccessibleGroupIds,
 };

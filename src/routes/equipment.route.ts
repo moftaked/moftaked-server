@@ -17,6 +17,9 @@ import {
   updateSubgroupSchema,
   createEquipmentSchema,
   updateEquipmentSchema,
+  createAttachmentSchema,
+  updateAttachmentSchema,
+  updateItemParentSchema,
 } from '../schemas/equipment.schemas';
 import {
   createGroup,
@@ -38,6 +41,10 @@ import {
   deleteItem,
   uploadItemPhoto,
   serveEquipmentPhoto,
+  createAttachment,
+  getAttachments,
+  updateAttachment,
+  updateItemParent,
 } from '../controllers/equipment.controller';
 import { upload } from '../middleware/image-upload.middleware';
 import { photoUploadRateLimiter } from '../middleware/rate-limiting.middleware';
@@ -160,6 +167,35 @@ equipmentRouter.post(
   photoUploadRateLimiter,
   upload.single('photo'),
   uploadItemPhoto,
+);
+
+// Attachments
+equipmentRouter.get(
+  '/groups/:groupId/items/:itemId/attachments',
+  isEquipmentViewer(),
+  getAttachments,
+);
+
+equipmentRouter.post(
+  '/groups/:groupId/items/:itemId/attachments',
+  isEquipmentOrganizer(),
+  validateData(createAttachmentSchema),
+  createAttachment,
+);
+
+equipmentRouter.put(
+  '/groups/:groupId/items/:itemId/attachments/:attachmentId',
+  isEquipmentOrganizer(),
+  validateData(updateAttachmentSchema),
+  updateAttachment,
+);
+
+// Assign/Unassign parent
+equipmentRouter.patch(
+  '/groups/:groupId/items/:itemId/parent',
+  isEquipmentOrganizer(),
+  validateData(updateItemParentSchema),
+  updateItemParent,
 );
 
 export { equipmentRouter };

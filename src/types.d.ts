@@ -46,6 +46,7 @@ export interface EquipmentRow extends RowDataPacket {
   equipment_id: number;
   group_id: number;
   subgroup_id: number | null;
+  parent_equipment_id: number | null;
   name: string;
   description: string | null;
   quantity: number;
