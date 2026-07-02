@@ -65,6 +65,10 @@ function equipmentGroupItemsKey(groupId: number): string {
   return `equipment_group_${groupId}_items`;
 }
 
+function equipmentItemAttachmentsKey(itemId: number): string {
+  return `equipment_item_${itemId}_attachments`;
+}
+
 async function touchClassStudents(classId: number): Promise<void> {
   await touch(classStudentsKey(classId));
 }
@@ -99,6 +103,10 @@ async function touchOccurrenceAttendance(occurrenceId: number, type?: 'student' 
 
 async function touchEquipmentGroupItems(groupId: number): Promise<void> {
   await touch(equipmentGroupItemsKey(groupId));
+}
+
+async function touchEquipmentItemAttachments(itemId: number): Promise<void> {
+  await touch(equipmentItemAttachmentsKey(itemId));
 }
 
 async function touchEquipmentGroups(): Promise<void> {
@@ -215,6 +223,7 @@ export default {
   touchDistricts,
   touchClasses,
   touchEquipmentGroupItems,
+  touchEquipmentItemAttachments,
   touchEquipmentGroups,
   getTimestamps,
   getTimestampsForUser,
@@ -226,6 +235,7 @@ export default {
   occurrenceAttendanceKey,
   personProfileKey,
   equipmentGroupItemsKey,
+  equipmentItemAttachmentsKey,
   DISTRICTS_KEY,
   CLASSES_KEY,
   EQUIPMENT_GROUPS_KEY,

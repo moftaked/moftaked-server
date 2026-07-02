@@ -285,11 +285,24 @@ async function updateItemParent(
   groupId: number,
   parentEquipmentId: number | null,
 ): Promise<void> {
+  const rows = await executeQuery<RowDataPacket[]>(
+    'SELECT parent_equipment_id FROM equipment WHERE equipment_id = ?',
+    [itemId],
+  );
+  const oldParentId: number | null = rows[0]?.['parent_equipment_id'] ?? null;
+
   await executeQuery(
     'UPDATE equipment SET parent_equipment_id = ? WHERE equipment_id = ?',
     [parentEquipmentId, itemId],
   );
-  dataVersionsService.touchEquipmentGroupItems(groupId).catch(() => {});
+
+  const keys: string[] = [
+    dataVersionsService.equipmentGroupItemsKey(groupId),
+    dataVersionsService.equipmentItemAttachmentsKey(itemId),
+  ];
+  if (oldParentId) keys.push(dataVersionsService.equipmentItemAttachmentsKey(oldParentId));
+  if (parentEquipmentId) keys.push(dataVersionsService.equipmentItemAttachmentsKey(parentEquipmentId));
+  dataVersionsService.touch(...keys).catch(() => {});
 }
 
 async function getAccessibleGroupIds(userId: number): Promise<number[]> {
