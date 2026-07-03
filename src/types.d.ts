@@ -62,3 +62,64 @@ export interface EquipmentGroupMemberRow extends RowDataPacket {
   access_level: 'organizer' | 'member';
   created_at: string;
 }
+
+export type ReservationState = 'draft' | 'waiting_for_approval' | 'reserved' | 'waiting_for_pickup' | 'picked_up' | 'waiting_for_return' | 'returned' | 'completed';
+
+export type ReviewerStatus = 'pending' | 'approved' | 'rejected';
+
+export interface ReservationRow extends RowDataPacket {
+  reservation_id: number;
+  class_id: number;
+  receiver_account_id: number;
+  pickup_datetime: string;
+  return_datetime: string;
+  state: ReservationState;
+  notes: string | null;
+  created_by: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReservationEquipmentRow extends RowDataPacket {
+  reservation_equipment_id: number;
+  reservation_id: number;
+  equipment_id: number;
+  quantity: number;
+}
+
+export interface ReservationReviewerRow extends RowDataPacket {
+  reservation_reviewer_id: number;
+  reservation_id: number;
+  account_id: number;
+  is_default: number;
+  status: ReviewerStatus;
+  reviewed_at: string | null;
+  created_at: string;
+}
+
+export interface ReservationHistoryRow extends RowDataPacket {
+  reservation_history_id: number;
+  reservation_id: number;
+  account_id: number;
+  action: string;
+  details: string | null;
+  created_at: string;
+}
+
+export interface FcmTokenRow extends RowDataPacket {
+  fcm_token_id: number;
+  account_id: number;
+  token: string;
+  device_info: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NotificationPreferenceRow extends RowDataPacket {
+  preference_id: number;
+  account_id: number;
+  notification_type: string;
+  enabled: number;
+  created_at: string;
+  updated_at: string;
+}

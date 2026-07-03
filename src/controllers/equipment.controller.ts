@@ -18,6 +18,7 @@ import {
   UpdateAttachmentDto,
   UpdateItemParentDto,
 } from '../schemas/equipment.schemas';
+
 import {
   processAndSaveImage,
   deleteImageVariants,
@@ -361,6 +362,31 @@ export async function updateItemParent(req: Request, res: Response, next: NextFu
     const body: UpdateItemParentDto = req.body;
     await equipmentService.updateItemParent(itemId, groupId, body.parent_equipment_id);
     res.status(StatusCodes.OK).json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function setDefaultReviewer(req: Request, res: Response, next: NextFunction) {
+  try {
+    const groupId = parseIntParam(req.params['groupId']);
+    if (groupId === undefined) return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid group ID'));
+
+    const body = req.body as { account_id: number | null };
+    await equipmentService.setGroupDefaultReviewer(groupId, body.account_id);
+    res.status(StatusCodes.OK).json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getDefaultReviewer(req: Request, res: Response, next: NextFunction) {
+  try {
+    const groupId = parseIntParam(req.params['groupId']);
+    if (groupId === undefined) return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid group ID'));
+
+    const accountId = await equipmentService.getGroupDefaultReviewer(groupId);
+    res.status(StatusCodes.OK).json({ success: true, data: { default_reviewer_id: accountId } });
   } catch (error) {
     next(error);
   }

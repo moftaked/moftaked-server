@@ -56,6 +56,10 @@ export const updateItemParentSchema = z.object({
   parent_equipment_id: z.number().int().positive().nullable(),
 });
 
+export const setDefaultReviewerSchema = z.object({
+  account_id: z.number().int().positive().nullable(),
+});
+
 export type CreateEquipmentGroupDto = z.infer<typeof createEquipmentGroupSchema>;
 export type UpdateEquipmentGroupDto = z.infer<typeof updateEquipmentGroupSchema>;
 export type AddMemberDto = z.infer<typeof addMemberSchema>;
@@ -67,3 +71,4 @@ export type UpdateEquipmentDto = z.infer<typeof updateEquipmentSchema>;
 export type CreateAttachmentDto = z.infer<typeof createAttachmentSchema>;
 export type UpdateAttachmentDto = z.infer<typeof updateAttachmentSchema>;
 export type UpdateItemParentDto = z.infer<typeof updateItemParentSchema>;
+export type SetDefaultReviewerDto = z.infer<typeof setDefaultReviewerSchema>;

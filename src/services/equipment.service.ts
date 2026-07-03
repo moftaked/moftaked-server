@@ -305,12 +305,51 @@ async function updateItemParent(
   dataVersionsService.touch(...keys).catch(() => {});
 }
 
+async function getGroupDefaultReviewer(groupId: number): Promise<number | null> {
+  const rows = await executeQuery<RowDataPacket[]>(
+    'SELECT default_reviewer_id FROM equipment_groups WHERE group_id = ?',
+    [groupId],
+  );
+  return rows[0]?.['default_reviewer_id'] ?? null;
+}
+
+async function setGroupDefaultReviewer(groupId: number, accountId: number | null): Promise<void> {
+  await executeQuery(
+    'UPDATE equipment_groups SET default_reviewer_id = ? WHERE group_id = ?',
+    [accountId, groupId],
+  );
+}
+
+async function getEquipmentGroupIds(equipmentIds: number[]): Promise<Map<number, number>> {
+  if (equipmentIds.length === 0) return new Map();
+  const placeholders = equipmentIds.map(() => '?').join(', ');
+  const rows = await executeQuery<RowDataPacket[]>(
+    `SELECT equipment_id, group_id FROM equipment WHERE equipment_id IN (${placeholders})`,
+    equipmentIds,
+  );
+  const map = new Map<number, number>();
+  for (const row of rows) {
+    map.set(row['equipment_id'], row['group_id']);
+  }
+  return map;
+}
+
 async function getAccessibleGroupIds(userId: number): Promise<number[]> {
   const rows = await executeQuery<RowDataPacket[]>(
     'SELECT group_id FROM equipment_group_members WHERE account_id = ?',
     [userId],
   );
   return rows.map(r => r['group_id']);
+}
+
+async function ensureDefaultReviewerColumn(): Promise<void> {
+  await executeQuery(
+    `ALTER TABLE equipment_groups
+     ADD COLUMN default_reviewer_id INT DEFAULT NULL,
+     ADD FOREIGN KEY (default_reviewer_id) REFERENCES accounts(account_id)`,
+  ).catch(() => {
+    // Column already exists
+  });
 }
 
 async function ensureAttachmentColumn(): Promise<void> {
@@ -371,6 +410,7 @@ async function ensureTables(): Promise<void> {
 export default {
   ensureTables,
   ensureAttachmentColumn,
+  ensureDefaultReviewerColumn,
   isOrganizer,
   hasViewAccess,
   createGroup,
@@ -396,4 +436,7 @@ export default {
   getItemAttachments,
   updateItemParent,
   getAccessibleGroupIds,
+  getGroupDefaultReviewer,
+  setGroupDefaultReviewer,
+  getEquipmentGroupIds,
 };

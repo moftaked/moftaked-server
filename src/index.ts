@@ -13,6 +13,8 @@ import dataVersionsService from './services/data-versions.service';
 import auditLogService from './services/audit-log.service';
 import attendanceService from './services/attendance.service';
 import equipmentService from './services/equipment.service';
+import reservationsService from './services/reservations.service';
+import notificationService from './services/notification.service';
 
 if (!process.env['DB_HOST']) throw new Error('DB_HOST is not defined');
 if (!process.env['DB_NAME']) throw new Error('DB_NAME is not defined');
@@ -96,8 +98,32 @@ equipmentService.ensureTables().then(() => {
   }).catch((err) => {
     console.error('Failed to ensure equipment attachment column:', err);
   });
+  equipmentService.ensureDefaultReviewerColumn().then(() => {
+    console.log('equipment default reviewer column ensured');
+  }).catch((err) => {
+    console.error('Failed to ensure default reviewer column:', err);
+  });
 }).catch((err) => {
   console.error('Failed to ensure equipment tables:', err);
+});
+
+reservationsService.ensureTables().then(() => {
+  console.log('reservations tables ensured');
+  reservationsService.startScheduler();
+}).catch((err) => {
+  console.error('Failed to ensure reservations tables:', err);
+});
+
+notificationService.ensureTables().then(() => {
+  console.log('notification tables ensured');
+}).catch((err) => {
+  console.error('Failed to ensure notification tables:', err);
+});
+
+notificationService.initializeFirebase().then(() => {
+  console.log('Firebase initialized');
+}).catch((err) => {
+  console.error('Failed to initialize Firebase:', err);
 });
 
 app.listen(port, () => {

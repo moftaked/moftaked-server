@@ -20,6 +20,7 @@ import {
   createAttachmentSchema,
   updateAttachmentSchema,
   updateItemParentSchema,
+  setDefaultReviewerSchema,
 } from '../schemas/equipment.schemas';
 import {
   createGroup,
@@ -45,6 +46,8 @@ import {
   getAttachments,
   updateAttachment,
   updateItemParent,
+  setDefaultReviewer,
+  getDefaultReviewer,
 } from '../controllers/equipment.controller';
 import { upload } from '../middleware/image-upload.middleware';
 import { photoUploadRateLimiter } from '../middleware/rate-limiting.middleware';
@@ -196,6 +199,20 @@ equipmentRouter.patch(
   isEquipmentOrganizer(),
   validateData(updateItemParentSchema),
   updateItemParent,
+);
+
+// Default Reviewer
+equipmentRouter.get(
+  '/groups/:groupId/default-reviewer',
+  isEquipmentOrganizer(),
+  getDefaultReviewer,
+);
+
+equipmentRouter.put(
+  '/groups/:groupId/default-reviewer',
+  isEquipmentOrganizer(),
+  validateData(setDefaultReviewerSchema),
+  setDefaultReviewer,
 );
 
 export { equipmentRouter };

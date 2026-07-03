@@ -60,6 +60,7 @@ function personProfileKey(personId: number, type: 'student' | 'teacher'): string
 const DISTRICTS_KEY = 'districts';
 const CLASSES_KEY = 'classes';
 const EQUIPMENT_GROUPS_KEY = 'equipment_groups';
+const EQUIPMENT_RESERVATIONS_KEY = 'equipment_reservations';
 
 function equipmentGroupItemsKey(groupId: number): string {
   return `equipment_group_${groupId}_items`;
@@ -111,6 +112,18 @@ async function touchEquipmentItemAttachments(itemId: number): Promise<void> {
 
 async function touchEquipmentGroups(): Promise<void> {
   await touch(EQUIPMENT_GROUPS_KEY);
+}
+
+function reservationKey(reservationId: number): string {
+  return `equipment_reservation_${reservationId}`;
+}
+
+async function touchReservations(): Promise<void> {
+  await touch(EQUIPMENT_RESERVATIONS_KEY);
+}
+
+async function touchReservation(reservationId: number): Promise<void> {
+  await touch(reservationKey(reservationId));
 }
 
 async function touchDistricts(): Promise<void> {
@@ -225,6 +238,8 @@ export default {
   touchEquipmentGroupItems,
   touchEquipmentItemAttachments,
   touchEquipmentGroups,
+  touchReservations,
+  touchReservation,
   getTimestamps,
   getTimestampsForUser,
   // Export key builders so controllers/services can build keys too
@@ -236,7 +251,9 @@ export default {
   personProfileKey,
   equipmentGroupItemsKey,
   equipmentItemAttachmentsKey,
+  reservationKey,
   DISTRICTS_KEY,
   CLASSES_KEY,
   EQUIPMENT_GROUPS_KEY,
+  EQUIPMENT_RESERVATIONS_KEY,
 };

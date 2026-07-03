@@ -4,6 +4,8 @@ import authRouter from './routes/auth.route';
 import classesRouter from './routes/classes.route';
 import { districtsRouter } from './routes/districts.route';
 import { equipmentRouter } from './routes/equipment.route';
+import { notificationsRouter } from './routes/notifications.route';
+import { reservationsRouter } from './routes/reservations.route';
 import eventsRouter from './routes/events.route';
 import { personsRouter } from './routes/persons.route';
 import reportsRouter from './routes/reports.route';
@@ -50,6 +52,14 @@ const routes = [
   {
     path: '/roles',
     router: rolesRouter,
+  },
+  {
+    path: '/reservations',
+    router: reservationsRouter,
+  },
+  {
+    path: '/notifications',
+    router: notificationsRouter,
   },
   {
     path: '/sync',
