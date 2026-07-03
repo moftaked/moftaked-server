@@ -3,14 +3,14 @@ import { z } from 'zod/v4';
 export const createReservationSchema = z.object({
   class_id: z.number().int().positive(),
   receiver_person_id: z.number().int().positive(),
-  pickup_datetime: z.iso.datetime(),
-  return_datetime: z.iso.datetime(),
+  pickup_datetime: z.string(),
+  return_datetime: z.string(),
   notes: z.string().optional().nullable(),
 });
 
 export const updateReservationSchema = z.object({
-  pickup_datetime: z.iso.datetime().optional(),
-  return_datetime: z.iso.datetime().optional(),
+  pickup_datetime: z.string().optional(),
+  return_datetime: z.string().optional(),
   notes: z.string().optional().nullable(),
 }).refine(
   (data) => {
