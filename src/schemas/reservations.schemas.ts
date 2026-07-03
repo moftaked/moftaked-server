@@ -2,7 +2,7 @@ import { z } from 'zod/v4';
 
 export const createReservationSchema = z.object({
   class_id: z.number().int().positive(),
-  receiver_account_id: z.number().int().positive(),
+  receiver_person_id: z.number().int().positive(),
   pickup_datetime: z.iso.datetime(),
   return_datetime: z.iso.datetime(),
   notes: z.string().optional().nullable(),

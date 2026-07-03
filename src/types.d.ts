@@ -70,7 +70,7 @@ export type ReviewerStatus = 'pending' | 'approved' | 'rejected';
 export interface ReservationRow extends RowDataPacket {
   reservation_id: number;
   class_id: number;
-  receiver_account_id: number;
+  receiver_person_id: number;
   pickup_datetime: string;
   return_datetime: string;
   state: ReservationState;

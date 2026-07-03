@@ -78,7 +78,7 @@ async function ensureTables(): Promise<void> {
     `CREATE TABLE IF NOT EXISTS reservations (
       reservation_id INT AUTO_INCREMENT PRIMARY KEY,
       class_id INT NOT NULL,
-      receiver_account_id INT NOT NULL,
+      receiver_person_id INT NOT NULL,
       pickup_datetime DATETIME NOT NULL,
       return_datetime DATETIME NOT NULL,
       state ENUM('draft','waiting_for_approval','reserved','waiting_for_pickup','picked_up','waiting_for_return','returned','completed') NOT NULL DEFAULT 'draft',
@@ -87,7 +87,7 @@ async function ensureTables(): Promise<void> {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       FOREIGN KEY (class_id) REFERENCES classes(class_id),
-      FOREIGN KEY (receiver_account_id) REFERENCES accounts(account_id),
+      FOREIGN KEY (receiver_person_id) REFERENCES persons(person_id),
       FOREIGN KEY (created_by) REFERENCES accounts(account_id)
     )`,
   );
@@ -138,6 +138,17 @@ async function ensureTables(): Promise<void> {
     )`,
   );
 
+  // Migrate existing table from receiver_account_id to receiver_person_id
+  await executeQuery(`ALTER TABLE reservations DROP FOREIGN KEY reservations_ibfk_2`).catch(() => {});
+  await executeQuery(
+    `ALTER TABLE reservations
+     CHANGE COLUMN receiver_account_id receiver_person_id INT NOT NULL`,
+  ).catch(() => {});
+  await executeQuery(
+    `ALTER TABLE reservations
+     ADD FOREIGN KEY (receiver_person_id) REFERENCES persons(person_id)`,
+  ).catch(() => {});
+
   // Add 'completed' to the state ENUM if upgrading an existing table
   await executeQuery(
     `ALTER TABLE reservations
@@ -173,26 +184,25 @@ async function createReservation(
     );
   }
 
-  // Validate receiver is in the same class
+  // Validate receiver is a teacher in the class
   const receiverCheck = await executeQuery<RowDataPacket[]>(
-    `SELECT 1 FROM accounts a
-     JOIN person_class pc ON a.person_id = pc.person_id
-     WHERE a.account_id = ? AND pc.class_id = ?`,
-    [data.receiver_account_id, data.class_id],
+    `SELECT 1 FROM person_class
+     WHERE person_id = ? AND class_id = ? AND type = 'teacher'`,
+    [data.receiver_person_id, data.class_id],
   );
   if (receiverCheck.length === 0) {
     throw createHttpError(
       StatusCodes.BAD_REQUEST,
-      'Receiver is not a member of the specified class',
+      'Receiver is not a teacher in the specified class',
     );
   }
 
   const result = await executeQuery<RowDataPacket[]>(
-    `INSERT INTO reservations (class_id, receiver_account_id, pickup_datetime, return_datetime, notes, created_by)
+    `INSERT INTO reservations (class_id, receiver_person_id, pickup_datetime, return_datetime, notes, created_by)
      VALUES (?, ?, ?, ?, ?, ?)`,
     [
       data.class_id,
-      data.receiver_account_id,
+      data.receiver_person_id,
       data.pickup_datetime,
       data.return_datetime,
       data.notes ?? null,
@@ -241,7 +251,9 @@ async function getReservations(
     conditions.push('r.created_by = ?');
     params.push(userId);
   } else if (filters.role === 'receiving') {
-    conditions.push('r.receiver_account_id = ?');
+    conditions.push(
+      'r.receiver_person_id = (SELECT person_id FROM accounts WHERE account_id = ?)',
+    );
     params.push(userId);
   } else if (filters.role === 'reviewer') {
     conditions.push(
@@ -261,7 +273,7 @@ async function getReservations(
   } else {
     // No role filter: show reservations user is involved in
     conditions.push(
-      `(r.created_by = ? OR r.receiver_account_id = ? OR EXISTS (
+      `(r.created_by = ? OR r.receiver_person_id = (SELECT person_id FROM accounts WHERE account_id = ?) OR EXISTS (
         SELECT 1 FROM reservation_reviewers rr WHERE rr.reservation_id = r.reservation_id AND rr.account_id = ?
       ) OR EXISTS (
         SELECT 1 FROM reservation_equipment re2
@@ -277,11 +289,11 @@ async function getReservations(
   return executeQuery<RowDataPacket[]>(
     `SELECT r.*, c.class_name,
             creator.username AS creator_name,
-            receiver.username AS receiver_name
+            receiver.person_name AS receiver_name
      FROM reservations r
      LEFT JOIN classes c ON r.class_id = c.class_id
      LEFT JOIN accounts creator ON r.created_by = creator.account_id
-     LEFT JOIN accounts receiver ON r.receiver_account_id = receiver.account_id
+     LEFT JOIN persons receiver ON r.receiver_person_id = receiver.person_id
      ${where}
      ORDER BY r.pickup_datetime DESC`,
     params,
@@ -292,20 +304,20 @@ async function getReservationById(
   reservationId: number,
 ): Promise<RowDataPacket | undefined> {
   const [reservation] = await executeQuery<RowDataPacket[]>(
-    `SELECT r.reservation_id, r.class_id, r.receiver_account_id,
+    `SELECT r.reservation_id, r.class_id, r.receiver_person_id,
             r.pickup_datetime, r.return_datetime, r.state, r.notes,
             r.created_by,
             c.class_name,
             creator.real_name AS creator_real_name,
-            receiver.real_name AS receiver_real_name
+            receiver.person_name AS receiver_real_name
      FROM reservations r
      LEFT JOIN classes c ON r.class_id = c.class_id
      LEFT JOIN accounts creator ON r.created_by = creator.account_id
-     LEFT JOIN accounts receiver ON r.receiver_account_id = receiver.account_id
+     LEFT JOIN persons receiver ON r.receiver_person_id = receiver.person_id
      WHERE r.reservation_id = ?`,
-    [reservationId],
-  );
-  if (!reservation) return undefined;
+
+
+
 
   const items = await executeQuery<RowDataPacket[]>(
     `SELECT re.reservation_equipment_id, re.equipment_id, re.quantity,
@@ -365,7 +377,7 @@ async function updateReservation(
   userId: number,
 ): Promise<void> {
   const [reservation] = await executeQuery<RowDataPacket[]>(
-    'SELECT reservation_id, class_id, receiver_account_id, pickup_datetime, return_datetime, state, notes, created_by, created_at, updated_at FROM reservations WHERE reservation_id = ?',
+    'SELECT reservation_id, class_id, receiver_person_id, pickup_datetime, return_datetime, state, notes, created_by, created_at, updated_at FROM reservations WHERE reservation_id = ?',
     [reservationId],
   );
   if (!reservation) {
@@ -373,7 +385,9 @@ async function updateReservation(
   }
 
   const isCreator = reservation['created_by'] === userId;
-  const isReceiver = reservation['receiver_account_id'] === userId;
+  const isReceiver =
+    reservation['receiver_person_id'] !== null &&
+    (await getAccountIdsForPerson(reservation['receiver_person_id'])).includes(userId);
   const isViewer = isCreator || isReceiver;
 
   if (isViewer && !canViewerEdit(reservation['state'])) {
@@ -423,15 +437,10 @@ async function updateReservation(
     await notificationService.notifyReservationEditedByViewer(reservationId, reviewerIds);
   } else if (isOrganizer) {
     await logHistory(reservationId, userId, 'edited');
-    await notificationService.notifyReservationEditedByOrganizer(
-      reservationId,
-      reservation['receiver_account_id'],
-    );
-    if(reservation['created_by'] !== reservation['receiver_account_id']) {
-      await notificationService.notifyReservationEditedByOrganizer(
-        reservationId,
-        reservation['created_by'],
-      );
+    const receiverAccountIds = await getAccountIdsForPerson(reservation['receiver_person_id']);
+    const allRecipients = [...new Set([...receiverAccountIds, reservation['created_by']])];
+    for (const accountId of allRecipients) {
+      await notificationService.notifyReservationEditedByOrganizer(reservationId, accountId);
     }
   } else {
     await logHistory(reservationId, userId, 'edited');
@@ -443,7 +452,7 @@ async function updateReservation(
 
 async function deleteReservation(reservationId: number, userId: number): Promise<void> {
   const [reservation] = await executeQuery<RowDataPacket[]>(
-    'SELECT reservation_id, class_id, receiver_account_id, pickup_datetime, return_datetime, state, notes, created_by, created_at, updated_at FROM reservations WHERE reservation_id = ?',
+    'SELECT reservation_id, class_id, receiver_person_id, pickup_datetime, return_datetime, state, notes, created_by, created_at, updated_at FROM reservations WHERE reservation_id = ?',
     [reservationId],
   );
   if (!reservation) {
@@ -462,7 +471,9 @@ async function deleteReservation(reservationId: number, userId: number): Promise
     }
   }
 
-  await notificationService.notifyReservationDeleted(reservationId, [reservation['created_by']]);
+  const receiverAccountIds = await getAccountIdsForPerson(reservation['receiver_person_id']);
+  const allRecipients = [...new Set([...receiverAccountIds, reservation['created_by']])];
+  await notificationService.notifyReservationDeleted(reservationId, allRecipients);
 
   await executeQuery('DELETE FROM reservations WHERE reservation_id = ?', [reservationId]);
   dataVersionsService.touchReservations().catch(() => {});
@@ -598,7 +609,7 @@ async function includeAttachment(
 
 async function submitReservation(reservationId: number, userId: number): Promise<void> {
   const [reservation] = await executeQuery<RowDataPacket[]>(
-    'SELECT reservation_id, class_id, receiver_account_id, pickup_datetime, return_datetime, state, notes, created_by, created_at, updated_at FROM reservations WHERE reservation_id = ?',
+    'SELECT reservation_id, class_id, receiver_person_id, pickup_datetime, return_datetime, state, notes, created_by, created_at, updated_at FROM reservations WHERE reservation_id = ?',
     [reservationId],
   );
   if (!reservation) {
@@ -738,7 +749,7 @@ async function approveReservation(
   notes?: string | null,
 ): Promise<void> {
   const [reservation] = await executeQuery<RowDataPacket[]>(
-    'SELECT state, receiver_account_id FROM reservations WHERE reservation_id = ?',
+    'SELECT state, receiver_person_id FROM reservations WHERE reservation_id = ?',
     [reservationId],
   );
   if (!reservation) {
@@ -777,10 +788,10 @@ async function approveReservation(
       reservationId,
     ]);
     await logHistory(reservationId, userId, 'reserved');
-    await notificationService.notifyReservationAccepted(
-      reservationId,
-      reservation['receiver_account_id'],
-    );
+    const receiverAccountIds = await getAccountIdsForPerson(reservation['receiver_person_id']);
+    for (const accountId of receiverAccountIds) {
+      await notificationService.notifyReservationAccepted(reservationId, accountId);
+    }
   }
 
   dataVersionsService.touchReservation(reservationId).catch(() => {});
@@ -793,7 +804,7 @@ async function rejectReservation(
   notes?: string | null,
 ): Promise<void> {
   const [reservation] = await executeQuery<RowDataPacket[]>(
-    'SELECT state, receiver_account_id FROM reservations WHERE reservation_id = ?',
+    'SELECT state, receiver_person_id FROM reservations WHERE reservation_id = ?',
     [reservationId],
   );
   if (!reservation) {
@@ -821,10 +832,10 @@ async function rejectReservation(
     [reservationId],
   );
   await logHistory(reservationId, userId, 'rejected', notes ? { notes } : undefined);
-  await notificationService.notifyReservationRejected(
-    reservationId,
-    reservation['receiver_account_id'],
-  );
+  const receiverAccountIds = await getAccountIdsForPerson(reservation['receiver_person_id']);
+  for (const accountId of receiverAccountIds) {
+    await notificationService.notifyReservationRejected(reservationId, accountId);
+  }
 
   dataVersionsService.touchReservation(reservationId).catch(() => {});
   dataVersionsService.touchReservations().catch(() => {});
@@ -917,7 +928,10 @@ async function isUserCreatorOrReceiver(
   reservationId: number,
 ): Promise<boolean> {
   const rows = await executeQuery<RowDataPacket[]>(
-    'SELECT 1 FROM reservations WHERE reservation_id = ? AND (created_by = ? OR receiver_account_id = ?) LIMIT 1',
+    `SELECT 1 FROM reservations
+     WHERE reservation_id = ?
+       AND (created_by = ? OR receiver_person_id = (SELECT person_id FROM accounts WHERE account_id = ?))
+     LIMIT 1`,
     [reservationId, userId, userId],
   );
   return rows.length > 0;
@@ -963,7 +977,7 @@ function stopScheduler(): void {
 
 async function processUpcomingPickups(): Promise<void> {
   const rows = await executeQuery<RowDataPacket[]>(
-    `SELECT reservation_id, receiver_account_id, created_by
+    `SELECT reservation_id, receiver_person_id, created_by
      FROM reservations
      WHERE state = 'reserved'
        AND pickup_datetime <= DATE_ADD(NOW(), INTERVAL 30 MINUTE)
@@ -977,8 +991,9 @@ async function processUpcomingPickups(): Promise<void> {
     ]);
     await logHistory(id, 0, 'state_auto', { from: 'reserved', to: 'waiting_for_pickup' });
     const organizerIds = await getOrganizerAccountIdsForReservation(id);
+    const receiverAccountIds = await getAccountIdsForPerson(row['receiver_person_id']);
     const notifyIds = [
-      row['receiver_account_id'],
+      ...receiverAccountIds,
       row['created_by'],
       ...organizerIds,
     ];
@@ -989,7 +1004,7 @@ async function processUpcomingPickups(): Promise<void> {
 
 async function processUpcomingReturns(): Promise<void> {
   const rows = await executeQuery<RowDataPacket[]>(
-    `SELECT reservation_id, receiver_account_id, created_by
+    `SELECT reservation_id, receiver_person_id, created_by
      FROM reservations
      WHERE state = 'picked_up'
        AND return_datetime <= DATE_ADD(NOW(), INTERVAL 30 MINUTE)
@@ -1003,8 +1018,9 @@ async function processUpcomingReturns(): Promise<void> {
     ]);
     await logHistory(id, 0, 'state_auto', { from: 'picked_up', to: 'waiting_for_return' });
     const organizerIds = await getOrganizerAccountIdsForReservation(id);
+    const receiverAccountIds = await getAccountIdsForPerson(row['receiver_person_id']);
     const notifyIds = [
-      row['receiver_account_id'],
+      ...receiverAccountIds,
       row['created_by'],
       ...organizerIds,
     ];
@@ -1021,6 +1037,15 @@ async function getOrganizerAccountIdsForReservation(reservationId: number): Prom
      JOIN equipment_group_members egm ON egm.group_id = e.group_id AND egm.access_level = 'organizer'
      WHERE re.reservation_id = ?`,
     [reservationId],
+  );
+  return rows.map((r) => r['account_id']);
+}
+
+async function getAccountIdsForPerson(personId: number): Promise<number[]> {
+  if (!personId) return [];
+  const rows = await executeQuery<RowDataPacket[]>(
+    'SELECT account_id FROM accounts WHERE person_id = ?',
+    [personId],
   );
   return rows.map((r) => r['account_id']);
 }
