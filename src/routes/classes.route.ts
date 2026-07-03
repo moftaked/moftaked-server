@@ -40,7 +40,7 @@ classesRouter.get(
 );
 classesRouter.get(
   '/:classId/teachers',
-  isInClass('params', [Roles.leader, Roles.manager]),
+  isInClass('params', [Roles.teacher, Roles.leader, Roles.manager]),
   getTeachers,
 );
 
