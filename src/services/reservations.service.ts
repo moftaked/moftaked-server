@@ -315,9 +315,9 @@ async function getReservationById(
      LEFT JOIN accounts creator ON r.created_by = creator.account_id
      LEFT JOIN persons receiver ON r.receiver_person_id = receiver.person_id
      WHERE r.reservation_id = ?`,
-
-
-
+    [reservationId],
+  );
+  if (!reservation) return undefined;
 
   const items = await executeQuery<RowDataPacket[]>(
     `SELECT re.reservation_equipment_id, re.equipment_id, re.quantity,
