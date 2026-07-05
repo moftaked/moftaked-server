@@ -150,7 +150,7 @@ async function getTimestamps(
   );
   const result: Record<string, string> = {};
   for (const row of rows) {
-    const ts: Date = row['last_updated'];
+    const ts = new Date(row['last_updated']);
     result[row['resource_key']] = ts.toISOString();
   }
   return result;

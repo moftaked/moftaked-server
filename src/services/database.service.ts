@@ -9,7 +9,7 @@ export function init(
   host: string,
   port: number,
 ) {
-  pool = mysql.createPool({ user, password, database, host, port, connectionLimit: 50 });
+  pool = mysql.createPool({ user, password, database, host, port, connectionLimit: 50, dateStrings: true });
 }
 
 export async function executeQuery<T extends mysql.QueryResult>(

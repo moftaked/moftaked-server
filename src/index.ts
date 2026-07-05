@@ -98,6 +98,11 @@ equipmentService.ensureTables().then(() => {
   }).catch((err) => {
     console.error('Failed to ensure equipment attachment column:', err);
   });
+  equipmentService.ensureSubgroupIdColumn().then(() => {
+    console.log('equipment subgroup_id column ensured');
+  }).catch((err) => {
+    console.error('Failed to ensure equipment subgroup_id column:', err);
+  });
   equipmentService.ensureDefaultReviewerColumn().then(() => {
     console.log('equipment default reviewer column ensured');
   }).catch((err) => {
@@ -109,6 +114,11 @@ equipmentService.ensureTables().then(() => {
 
 reservationsService.ensureTables().then(() => {
   console.log('reservations tables ensured');
+  reservationsService.ensureReservationGroupIdColumn().then(() => {
+    console.log('reservation group_id column ensured');
+  }).catch((err) => {
+    console.error('Failed to ensure reservation group_id column:', err);
+  });
   reservationsService.startScheduler();
 }).catch((err) => {
   console.error('Failed to ensure reservations tables:', err);
