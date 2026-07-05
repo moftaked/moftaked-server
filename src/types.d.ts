@@ -63,7 +63,7 @@ export interface EquipmentGroupMemberRow extends RowDataPacket {
   created_at: string;
 }
 
-export type ReservationState = 'draft' | 'waiting_for_approval' | 'reserved' | 'waiting_for_pickup' | 'picked_up' | 'waiting_for_return' | 'returned' | 'completed';
+export type ReservationState = 'draft' | 'waiting_for_approval' | 'reserved' | 'waiting_for_pickup' | 'picked_up' | 'waiting_for_return' | 'returned';
 
 export type ReviewerStatus = 'pending' | 'approved' | 'rejected';
 

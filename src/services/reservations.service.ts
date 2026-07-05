@@ -15,7 +15,7 @@ import type { ReservationState } from '../types';
 // ---- Helpers ----
 
 function canViewerEdit(state: ReservationState): boolean {
-  return ['draft', 'waiting_for_approval', 'reserved'].includes(state);
+  return ['draft', 'waiting_for_approval'].includes(state);
 }
 
 // ---- Availability ----
@@ -59,7 +59,35 @@ async function checkAvailability(
   }
 
   const [row] = await executeQuery<RowDataPacket[]>(query, params);
-  const reservedQty = Number(row?.['reserved_qty'] ?? 0);
+  let reservedQty = Number(row?.['reserved_qty'] ?? 0);
+
+  // Check if this equipment is an attachment of any parent equipment reserved in overlapping reservations
+  const parentEquipmentId = await executeQuery<RowDataPacket[]>(
+    'SELECT parent_equipment_id FROM equipment WHERE equipment_id = ?',
+    [equipmentId],
+  );
+  const parentId = parentEquipmentId[0]?.['parent_equipment_id'];
+  if (parentId) {
+    let parentQuery = `SELECT COALESCE(SUM(re.quantity), 0) AS parent_reserved_qty
+                       FROM reservation_equipment re
+                       JOIN reservations r ON re.reservation_id = r.reservation_id
+                       WHERE re.equipment_id = ?
+                         AND r.state IN (?, ?, ?, ?)
+                         AND r.pickup_datetime < ?
+                         AND r.return_datetime > ?`;
+    const parentParams: unknown[] = [
+      parentId, 'reserved', 'waiting_for_pickup', 'picked_up', 'waiting_for_return',
+      returnDatetime, pickupDatetime,
+    ];
+    if (excludeReservationId !== undefined) {
+      parentQuery += ' AND r.reservation_id != ?';
+      parentParams.push(excludeReservationId);
+    }
+    const [parentRow] = await executeQuery<RowDataPacket[]>(parentQuery, parentParams);
+    const parentReservedQty = Number(parentRow?.['parent_reserved_qty'] ?? 0);
+    reservedQty += parentReservedQty;
+  }
+
   const availableQty = totalQty - reservedQty;
 
   if (availableQty < quantity) {
@@ -81,7 +109,7 @@ async function ensureTables(): Promise<void> {
       receiver_person_id INT NOT NULL,
       pickup_datetime DATETIME NOT NULL,
       return_datetime DATETIME NOT NULL,
-      state ENUM('draft','waiting_for_approval','reserved','waiting_for_pickup','picked_up','waiting_for_return','returned','completed') NOT NULL DEFAULT 'draft',
+      state ENUM('draft','waiting_for_approval','reserved','waiting_for_pickup','picked_up','waiting_for_return','returned') NOT NULL DEFAULT 'draft',
       notes TEXT,
       created_by INT NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -149,10 +177,10 @@ async function ensureTables(): Promise<void> {
      ADD FOREIGN KEY (receiver_person_id) REFERENCES persons(person_id)`,
   ).catch(() => {});
 
-  // Add 'completed' to the state ENUM if upgrading an existing table
+  // Update state ENUM if upgrading an existing table
   await executeQuery(
     `ALTER TABLE reservations
-     MODIFY COLUMN state ENUM('draft','waiting_for_approval','reserved','waiting_for_pickup','picked_up','waiting_for_return','returned','completed')
+     MODIFY COLUMN state ENUM('draft','waiting_for_approval','reserved','waiting_for_pickup','picked_up','waiting_for_return','returned')
      NOT NULL DEFAULT 'draft'`,
   ).catch(() => {});
 }
@@ -198,8 +226,8 @@ async function createReservation(
   }
 
   const result = await executeQuery<RowDataPacket[]>(
-    `INSERT INTO reservations (class_id, receiver_person_id, pickup_datetime, return_datetime, notes, created_by)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO reservations (class_id, receiver_person_id, pickup_datetime, return_datetime, notes, created_by, group_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
       data.class_id,
       data.receiver_person_id,
@@ -207,6 +235,7 @@ async function createReservation(
       data.return_datetime,
       data.notes ?? null,
       createdBy,
+      data.group_id ?? null,
     ],
   );
   const reservationId = (result as any).insertId;
@@ -221,6 +250,7 @@ async function getReservations(
   userId: number,
   filters: {
     class_id: number | undefined;
+    group_id: number | undefined;
     state: ReservationState | undefined;
     role: 'created' | 'receiving' | 'reviewer' | 'organizer' | undefined;
     from_date: string | undefined;
@@ -233,6 +263,29 @@ async function getReservations(
   if (filters.class_id !== undefined) {
     conditions.push('r.class_id = ?');
     params.push(filters.class_id);
+  }
+  if (filters.group_id !== undefined) {
+    conditions.push('r.group_id = ?');
+    params.push(filters.group_id);
+
+    // Non-organizers should only see reservations for classes they belong to
+    if (filters.class_id === undefined && filters.role !== 'organizer') {
+      const [isOrganizer] = await executeQuery<RowDataPacket[]>(
+        'SELECT 1 FROM equipment_group_members WHERE group_id = ? AND account_id = ? AND access_level = \'organizer\' LIMIT 1',
+        [filters.group_id, userId],
+      );
+      if (!isOrganizer) {
+        const userRoles = await executeQuery<RowDataPacket[]>(
+          'SELECT DISTINCT class_id FROM roles WHERE account_id = ? AND class_id IS NOT NULL',
+          [userId],
+        );
+        const classIds = userRoles.map((r: RowDataPacket) => r['class_id']);
+        if (classIds.length > 0) {
+          conditions.push(`r.class_id IN (${classIds.map(() => '?').join(',')})`);
+          params.push(...classIds);
+        }
+      }
+    }
   }
   if (filters.state !== undefined) {
     conditions.push('r.state = ?');
@@ -289,6 +342,7 @@ async function getReservations(
   return executeQuery<RowDataPacket[]>(
     `SELECT r.*, c.class_name,
             creator.username AS creator_name,
+            creator.real_name AS creator_real_name,
             receiver.person_name AS receiver_name
      FROM reservations r
      LEFT JOIN classes c ON r.class_id = c.class_id
@@ -302,9 +356,10 @@ async function getReservations(
 
 async function getReservationById(
   reservationId: number,
+  userId?: number,
 ): Promise<RowDataPacket | undefined> {
   const [reservation] = await executeQuery<RowDataPacket[]>(
-    `SELECT r.reservation_id, r.class_id, r.receiver_person_id,
+    `SELECT r.reservation_id, r.class_id, r.group_id, r.receiver_person_id,
             r.pickup_datetime, r.return_datetime, r.state, r.notes,
             r.created_by,
             c.class_name,
@@ -342,6 +397,27 @@ async function getReservationById(
     );
     item['excluded_attachments'] = excluded;
 
+    // Determine which excluded attachments are reserved in another overlapping reservation
+    const blocked = await executeQuery<RowDataPacket[]>(
+      `SELECT DISTINCT rea.attachment_id
+       FROM reservation_excluded_attachments rea
+       LEFT JOIN equipment e ON rea.attachment_id = e.equipment_id
+       LEFT JOIN reservation_equipment re2 ON (
+         re2.equipment_id = rea.attachment_id
+         OR (e.parent_equipment_id IS NOT NULL AND re2.equipment_id = e.parent_equipment_id)
+       )
+       JOIN reservations r ON re2.reservation_id = r.reservation_id
+       WHERE rea.reservation_equipment_id = ?
+         AND r.reservation_id != ?
+         AND r.state IN (?, ?, ?, ?)
+         AND r.pickup_datetime < ?
+         AND r.return_datetime > ?`,
+      [item['reservation_equipment_id'], reservation['reservation_id'],
+       'reserved', 'waiting_for_pickup', 'picked_up', 'waiting_for_return',
+       reservation['return_datetime'], reservation['pickup_datetime']],
+    );
+    item['blocked_attachment_ids'] = blocked.map((b: RowDataPacket) => b['attachment_id']);
+
     const allAttachments = await equipmentService.getItemAttachments(item['equipment_id']);
     item['all_attachments'] = allAttachments;
   }
@@ -357,6 +433,9 @@ async function getReservationById(
     [reservationId],
   );
   reservation['reviewers'] = reviewers;
+  reservation['is_current_user_reviewer'] = userId
+    ? reviewers.some((r: RowDataPacket) => r['account_id'] === userId && r['status'] === 'pending')
+    : false;
 
   const history = await executeQuery<RowDataPacket[]>(
     `SELECT rh.*, a.username, a.real_name
@@ -367,6 +446,17 @@ async function getReservationById(
     [reservationId],
   );
   reservation['history'] = history;
+
+  // Determine rejection_reason — only if the latest history event is 'rejected'
+  const latestEntry = history.length > 0 ? history[history.length - 1] : null;
+  if (latestEntry && latestEntry['action'] === 'rejected' && latestEntry['details']) {
+    const details = typeof latestEntry['details'] === 'string'
+      ? JSON.parse(latestEntry['details'] as string)
+      : latestEntry['details'];
+    reservation['rejection_reason'] = (details as Record<string, unknown>)['notes'] ?? null;
+  } else {
+    reservation['rejection_reason'] = null;
+  }
 
   return reservation;
 }
@@ -458,15 +548,15 @@ async function deleteReservation(reservationId: number, userId: number): Promise
   if (!reservation) {
     throw createHttpError(StatusCodes.NOT_FOUND, 'Reservation not found');
   }
-  if (reservation['state'] !== 'draft' && reservation['state'] !== 'waiting_for_approval') {
-    throw createHttpError(
-      StatusCodes.CONFLICT,
-      'Can only delete reservations in draft or waiting_for_approval state',
-    );
-  }
-  if (reservation['created_by'] !== userId) {
-    const isOrg = await isUserOrganizerOfReservation(userId, reservationId);
-    if (!isOrg) {
+  const isOrg = await isUserOrganizerOfReservation(userId, reservationId);
+  if (!isOrg) {
+    if (reservation['state'] !== 'draft' && reservation['state'] !== 'waiting_for_approval') {
+      throw createHttpError(
+        StatusCodes.CONFLICT,
+        'Can only delete reservations in draft or waiting_for_approval state',
+      );
+    }
+    if (reservation['created_by'] !== userId) {
       throw createHttpError(StatusCodes.FORBIDDEN, 'Not authorized to delete this reservation');
     }
   }
@@ -510,6 +600,61 @@ async function addEquipment(
     throw createHttpError(StatusCodes.FORBIDDEN, 'No access to this equipment');
   }
 
+  // Check all items in the reservation belong to the same group
+  const existing = await executeQuery<RowDataPacket[]>(
+    `SELECT DISTINCT e.group_id FROM reservation_equipment re
+     JOIN equipment e ON re.equipment_id = e.equipment_id
+     WHERE re.reservation_id = ? AND e.group_id != ?`,
+    [reservationId, groupId],
+  );
+  if (existing.length > 0 && existing[0]) {
+    throw createHttpError(
+      StatusCodes.CONFLICT,
+      'All equipment in a reservation must belong to the same group',
+    );
+  }
+
+  // Check equipment is not already in the reservation
+  const existingEquipment = await executeQuery<RowDataPacket[]>(
+    'SELECT 1 FROM reservation_equipment WHERE reservation_id = ? AND equipment_id = ?',
+    [reservationId, data.equipment_id],
+  );
+  if (existingEquipment.length > 0) {
+    throw createHttpError(
+      StatusCodes.CONFLICT,
+      'Equipment is already in the reservation',
+    );
+  }
+
+  // Check if equipment is an attachment of any equipment already in the reservation
+  const parentInReservation = await executeQuery<RowDataPacket[]>(
+    `SELECT 1 FROM reservation_equipment re
+     WHERE re.reservation_id = ?
+       AND re.equipment_id = (SELECT parent_equipment_id FROM equipment WHERE equipment_id = ?)`,
+    [reservationId, data.equipment_id],
+  );
+  if (parentInReservation.length > 0) {
+    throw createHttpError(
+      StatusCodes.CONFLICT,
+      'Equipment is already included as an attachment of another item in the reservation',
+    );
+  }
+
+  // Check if any attachments of this equipment are already in the reservation
+  const childInReservation = await executeQuery<RowDataPacket[]>(
+    `SELECT 1 FROM reservation_equipment re
+     WHERE re.reservation_id = ? AND re.equipment_id IN (
+       SELECT equipment_id FROM equipment WHERE parent_equipment_id = ?
+     )`,
+    [reservationId, data.equipment_id],
+  );
+  if (childInReservation.length > 0) {
+    throw createHttpError(
+      StatusCodes.CONFLICT,
+      'An attachment of this equipment is already in the reservation',
+    );
+  }
+
   // Check availability
   await checkAvailability(
     data.equipment_id,
@@ -521,11 +666,35 @@ async function addEquipment(
 
   const result = await executeQuery<RowDataPacket[]>(
     `INSERT INTO reservation_equipment (reservation_id, equipment_id, quantity)
-     VALUES (?, ?, ?)
-     ON DUPLICATE KEY UPDATE quantity = quantity + ?`,
-    [reservationId, data.equipment_id, data.quantity, data.quantity],
+     VALUES (?, ?, ?)`,
+    [reservationId, data.equipment_id, data.quantity],
   );
   const reservationEquipmentId = (result as any).insertId;
+
+  // Auto-exclude attachments that are already reserved in other overlapping reservations
+  const childRows = await executeQuery<RowDataPacket[]>(
+    'SELECT equipment_id FROM equipment WHERE parent_equipment_id = ?',
+    [data.equipment_id],
+  );
+  for (const child of childRows) {
+    const childReservedRows = await executeQuery<RowDataPacket[]>(
+      `SELECT 1 FROM reservation_equipment re
+       JOIN reservations r ON re.reservation_id = r.reservation_id
+       WHERE re.equipment_id = ?
+         AND r.reservation_id != ?
+         AND r.state IN (?, ?, ?, ?)
+         AND r.pickup_datetime < ?
+         AND r.return_datetime > ?`,
+      [child['equipment_id'], reservationId, 'reserved', 'waiting_for_pickup', 'picked_up', 'waiting_for_return',
+       reservation['return_datetime'], reservation['pickup_datetime']],
+    );
+    if (childReservedRows && childReservedRows['length'] > 0) {
+      await executeQuery(
+        'INSERT IGNORE INTO reservation_excluded_attachments (reservation_equipment_id, attachment_id) VALUES (?, ?)',
+        [reservationEquipmentId, child['equipment_id']],
+      );
+    }
+  }
 
   await logHistory(reservationId, userId, 'equipment_added', {
     equipment_id: data.equipment_id,
@@ -572,13 +741,17 @@ async function excludeAttachment(
 ): Promise<void> {
   // Verify the attachment belongs to the equipment
   const [item] = await executeQuery<RowDataPacket[]>(
-    `SELECT re.equipment_id
+    `SELECT re.equipment_id, r.state
      FROM reservation_equipment re
+     JOIN reservations r ON re.reservation_id = r.reservation_id
      WHERE re.reservation_equipment_id = ?`,
     [reservationEquipmentId],
   );
   if (!item) {
     throw createHttpError(StatusCodes.NOT_FOUND, 'Reservation equipment not found');
+  }
+  if (!canViewerEdit(item['state'])) {
+    throw createHttpError(StatusCodes.CONFLICT, 'Cannot edit reservation in its current state');
   }
 
   const [attachment] = await executeQuery<RowDataPacket[]>(
@@ -599,6 +772,61 @@ async function includeAttachment(
   reservationEquipmentId: number,
   attachmentId: number,
 ): Promise<void> {
+  // Get reservation details for overlap check
+  const items = await executeQuery<RowDataPacket[]>(
+    `SELECT r.reservation_id, r.state, r.pickup_datetime, r.return_datetime
+     FROM reservation_equipment re
+     JOIN reservations r ON re.reservation_id = r.reservation_id
+     WHERE re.reservation_equipment_id = ?`,
+    [reservationEquipmentId],
+  );
+  if (!items || items['length'] === 0) {
+    throw createHttpError(StatusCodes.NOT_FOUND, 'Reservation equipment not found');
+  }
+  const item = items[0]!;
+  if (!canViewerEdit(item['state'])) {
+    throw createHttpError(StatusCodes.CONFLICT, 'Cannot edit reservation in its current state');
+  }
+
+  const reservationId = item['reservation_id'];
+  // Check if this attachment is reserved in another overlapping reservation
+  const conflictRows = await executeQuery<RowDataPacket[]>(
+    `SELECT 1 FROM reservation_equipment re
+     JOIN reservations r ON re.reservation_id = r.reservation_id
+     WHERE re.equipment_id = ?
+       AND r.reservation_id != ?
+       AND r.state IN (?, ?, ?, ?)
+       AND r.pickup_datetime < ?
+       AND r.return_datetime > ?`,
+    [attachmentId, reservationId, 'reserved', 'waiting_for_pickup', 'picked_up', 'waiting_for_return',
+     item['return_datetime'], item['pickup_datetime']],
+  );
+  if (conflictRows && conflictRows['length'] > 0) {
+    throw createHttpError(
+      StatusCodes.CONFLICT,
+      'Cannot include this attachment as it is already reserved in another reservation',
+    );
+  }
+
+  // Also check if the attachment's parent equipment is reserved in another overlapping reservation
+  const parentRows = await executeQuery<RowDataPacket[]>(
+    `SELECT 1 FROM reservation_equipment re
+     JOIN reservations r ON re.reservation_id = r.reservation_id
+     WHERE re.equipment_id = (SELECT parent_equipment_id FROM equipment WHERE equipment_id = ?)
+       AND r.reservation_id != ?
+       AND r.state IN (?, ?, ?, ?)
+       AND r.pickup_datetime < ?
+       AND r.return_datetime > ?`,
+    [attachmentId, reservationId, 'reserved', 'waiting_for_pickup', 'picked_up', 'waiting_for_return',
+     item['return_datetime'], item['pickup_datetime']],
+  );
+  if (parentRows && parentRows['length'] > 0) {
+    throw createHttpError(
+      StatusCodes.CONFLICT,
+      'Cannot include this attachment as its parent equipment is reserved in another reservation',
+    );
+  }
+
   await executeQuery(
     'DELETE FROM reservation_excluded_attachments WHERE reservation_equipment_id = ? AND attachment_id = ?',
     [reservationEquipmentId, attachmentId],
@@ -615,10 +843,10 @@ async function submitReservation(reservationId: number, userId: number): Promise
   if (!reservation) {
     throw createHttpError(StatusCodes.NOT_FOUND, 'Reservation not found');
   }
-  if (reservation['state'] !== 'draft' && reservation['state'] !== 'waiting_for_approval') {
+  if (reservation['state'] !== 'draft') {
     throw createHttpError(
       StatusCodes.CONFLICT,
-      'Only draft or waiting_for_approval reservations can be submitted',
+      'Only draft reservations can be submitted',
     );
   }
 
@@ -631,7 +859,7 @@ async function submitReservation(reservationId: number, userId: number): Promise
     [reservationId],
   );
   if (equipmentRows.length === 0) {
-    throw createHttpError(StatusCodes.BAD_REQUEST, 'Reservation must have at least one equipment item');
+    throw createHttpError(StatusCodes.BAD_REQUEST, 'مينفعش تعمل حجز من غير ادوات');
   }
 
   // Add default reviewers from each equipment group
@@ -675,6 +903,43 @@ async function submitReservation(reservationId: number, userId: number): Promise
   dataVersionsService.touchReservations().catch(() => {});
 }
 
+async function unsubmitReservation(reservationId: number, userId: number): Promise<void> {
+  const [reservation] = await executeQuery<RowDataPacket[]>(
+    'SELECT reservation_id, state, created_by FROM reservations WHERE reservation_id = ?',
+    [reservationId],
+  );
+  if (!reservation) {
+    throw createHttpError(StatusCodes.NOT_FOUND, 'Reservation not found');
+  }
+  if (reservation['state'] !== 'waiting_for_approval') {
+    throw createHttpError(
+      StatusCodes.CONFLICT,
+      'Only waiting_for_approval reservations can be reverted to draft',
+    );
+  }
+  if (reservation['created_by'] !== userId) {
+    const isOrg = await isUserOrganizerOfReservation(userId, reservationId);
+    if (!isOrg) {
+      throw createHttpError(StatusCodes.FORBIDDEN, 'Not authorized to revert this reservation');
+    }
+  }
+
+  await executeQuery('UPDATE reservations SET state = ? WHERE reservation_id = ?', [
+    'draft',
+    reservationId,
+  ]);
+
+  // Reset all reviewer statuses to pending so fresh reviews are required on next submit
+  await executeQuery(
+    'UPDATE reservation_reviewers SET status = ?, reviewed_at = NULL WHERE reservation_id = ?',
+    ['pending', reservationId],
+  );
+
+  await logHistory(reservationId, userId, 'draft');
+  dataVersionsService.touchReservation(reservationId).catch(() => {});
+  dataVersionsService.touchReservations().catch(() => {});
+}
+
 // ---- Reviewers ----
 
 async function getReviewerAccountIds(reservationId: number): Promise<number[]> {
@@ -702,9 +967,36 @@ async function addReviewer(
   accountId: number,
   userId: number,
 ): Promise<void> {
+  const [reservation] = await executeQuery<RowDataPacket[]>(
+    'SELECT state FROM reservations WHERE reservation_id = ?',
+    [reservationId],
+  );
+  if (!reservation) {
+    throw createHttpError(StatusCodes.NOT_FOUND, 'Reservation not found');
+  }
+  if (!canViewerEdit(reservation['state'])) {
+    throw createHttpError(
+      StatusCodes.CONFLICT,
+      'Cannot modify reviewers in the current reservation state',
+    );
+  }
+
   const isOrg = await isUserOrganizerOfReservation(userId, reservationId);
   if (!isOrg) {
     throw createHttpError(StatusCodes.FORBIDDEN, 'Only organizers can add reviewers');
+  }
+
+  // Verify the account being added is an organizer of the reservation's equipment group
+  const [rows] = await executeQuery<RowDataPacket[]>(
+    `SELECT 1 FROM equipment_group_members egm
+     JOIN reservations r ON r.reservation_id = ?
+     WHERE egm.group_id = r.group_id
+       AND egm.account_id = ?
+       AND egm.access_level = 'organizer'`,
+    [reservationId, accountId],
+  );
+  if (!rows || rows['length'] === 0) {
+    throw createHttpError(StatusCodes.BAD_REQUEST, 'Only equipment group organizers can be reviewers');
   }
 
   await executeQuery(
@@ -720,11 +1012,17 @@ async function removeReviewer(
   userId: number,
 ): Promise<void> {
   const [reviewer] = await executeQuery<RowDataPacket[]>(
-    'SELECT reservation_id, is_default FROM reservation_reviewers WHERE reservation_reviewer_id = ?',
+    'SELECT r.state, rr.reservation_id, rr.is_default FROM reservation_reviewers rr JOIN reservations r ON rr.reservation_id = r.reservation_id WHERE rr.reservation_reviewer_id = ?',
     [reservationReviewerId],
   );
   if (!reviewer) {
     throw createHttpError(StatusCodes.NOT_FOUND, 'Reviewer not found');
+  }
+  if (!canViewerEdit(reviewer['state'])) {
+    throw createHttpError(
+      StatusCodes.CONFLICT,
+      'Cannot modify reviewers in the current reservation state',
+    );
   }
 
   const isOrg = await isUserOrganizerOfReservation(userId, reviewer['reservation_id']);
@@ -798,6 +1096,16 @@ async function approveReservation(
   dataVersionsService.touchReservations().catch(() => {});
 }
 
+async function reopenReservation(reservationId: number, userId: number): Promise<void> {
+  await transitionState(reservationId, userId, 'reserved', 'draft', 'reopened');
+
+  // Reset reviewer statuses to pending so fresh reviews are required
+  await executeQuery(
+    'UPDATE reservation_reviewers SET status = ?, reviewed_at = NULL WHERE reservation_id = ?',
+    ['pending', reservationId],
+  );
+}
+
 async function rejectReservation(
   reservationId: number,
   userId: number,
@@ -843,20 +1151,20 @@ async function rejectReservation(
 
 // ---- State transitions (organizer) ----
 
+async function markWaitingForPickup(reservationId: number, userId: number): Promise<void> {
+  await transitionState(reservationId, userId, 'reserved', 'waiting_for_pickup', 'marked_for_pickup');
+}
+
 async function markPickedUp(reservationId: number, userId: number): Promise<void> {
   await transitionState(reservationId, userId, 'waiting_for_pickup', 'picked_up', 'picked_up');
 }
 
+async function markWaitingForReturn(reservationId: number, userId: number): Promise<void> {
+  await transitionState(reservationId, userId, 'picked_up', 'waiting_for_return', 'marked_for_return');
+}
+
 async function markReturned(reservationId: number, userId: number): Promise<void> {
   await transitionState(reservationId, userId, 'waiting_for_return', 'returned', 'returned');
-}
-
-async function completeReservation(reservationId: number, userId: number): Promise<void> {
-  await transitionState(reservationId, userId, 'reserved', 'completed', 'completed');
-}
-
-async function reopenReservation(reservationId: number, userId: number): Promise<void> {
-  await transitionState(reservationId, userId, 'completed', 'draft', 'reopened');
 }
 
 async function transitionState(
@@ -944,7 +1252,15 @@ async function isUserInvolvedInReservation(
   if (await isUserCreatorOrReceiver(userId, reservationId)) return true;
   if (await isUserReviewerOfReservation(userId, reservationId)) return true;
   if (await isUserOrganizerOfReservation(userId, reservationId)) return true;
-  return false;
+  // Any user with a role in the reservation's class can view it
+  const rows = await executeQuery<RowDataPacket[]>(
+    `SELECT 1 FROM reservations r
+     JOIN roles ro ON ro.class_id = r.class_id AND ro.account_id = ?
+     WHERE r.reservation_id = ?
+     LIMIT 1`,
+    [userId, reservationId],
+  );
+  return rows.length > 0;
 }
 
 // ---- Scheduled job ----
@@ -976,12 +1292,17 @@ function stopScheduler(): void {
 }
 
 async function processUpcomingPickups(): Promise<void> {
+  const now = new Date();
+  const egyptNowStr = now.toLocaleString('en-CA', { timeZone: 'Africa/Cairo', hour12: false }).replace(',', '');
+  const in30 = new Date(now.getTime() + 30 * 60 * 1000);
+  const egyptIn30 = in30.toLocaleString('en-CA', { timeZone: 'Africa/Cairo', hour12: false }).replace(',', '');
   const rows = await executeQuery<RowDataPacket[]>(
     `SELECT reservation_id, receiver_person_id, created_by
      FROM reservations
      WHERE state = 'reserved'
-       AND pickup_datetime <= DATE_ADD(NOW(), INTERVAL 30 MINUTE)
-       AND pickup_datetime > NOW()`,
+       AND pickup_datetime <= ?
+       AND pickup_datetime > ?`,
+    [egyptIn30, egyptNowStr],
   );
   for (const row of rows) {
     const id = row['reservation_id'];
@@ -1003,12 +1324,17 @@ async function processUpcomingPickups(): Promise<void> {
 }
 
 async function processUpcomingReturns(): Promise<void> {
+  const now = new Date();
+  const egyptNowStr = now.toLocaleString('en-CA', { timeZone: 'Africa/Cairo', hour12: false }).replace(',', '');
+  const in30 = new Date(now.getTime() + 30 * 60 * 1000);
+  const egyptIn30 = in30.toLocaleString('en-CA', { timeZone: 'Africa/Cairo', hour12: false }).replace(',', '');
   const rows = await executeQuery<RowDataPacket[]>(
     `SELECT reservation_id, receiver_person_id, created_by
      FROM reservations
      WHERE state = 'picked_up'
-       AND return_datetime <= DATE_ADD(NOW(), INTERVAL 30 MINUTE)
-       AND return_datetime > NOW()`,
+       AND return_datetime <= ?
+       AND return_datetime > ?`,
+    [egyptIn30, egyptNowStr],
   );
   for (const row of rows) {
     const id = row['reservation_id'];
@@ -1050,6 +1376,16 @@ async function getAccountIdsForPerson(personId: number): Promise<number[]> {
   return rows.map((r) => r['account_id']);
 }
 
+async function ensureReservationGroupIdColumn(): Promise<void> {
+  await executeQuery(
+    `ALTER TABLE reservations
+     ADD COLUMN group_id INT DEFAULT NULL,
+     ADD FOREIGN KEY (group_id) REFERENCES equipment_groups(group_id) ON DELETE SET NULL`,
+  ).catch(() => {
+    // Column already exists
+  });
+}
+
 export default {
   ensureTables,
   createReservation,
@@ -1062,15 +1398,17 @@ export default {
   excludeAttachment,
   includeAttachment,
   submitReservation,
+  unsubmitReservation,
   getReservationReviewers,
   addReviewer,
   removeReviewer,
   approveReservation,
   rejectReservation,
+  reopenReservation,
+  markWaitingForPickup,
+  markWaitingForReturn,
   markPickedUp,
   markReturned,
-  completeReservation,
-  reopenReservation,
   checkAvailability,
   isUserOrganizerOfReservation,
   isUserReviewerOfReservation,
@@ -1078,4 +1416,5 @@ export default {
   isUserInvolvedInReservation,
   startScheduler,
   stopScheduler,
+  ensureReservationGroupIdColumn,
 };

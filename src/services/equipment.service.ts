@@ -98,9 +98,21 @@ async function createSubgroup(groupId: number, data: CreateSubgroupDto): Promise
 
 async function getSubgroups(groupId: number): Promise<RowDataPacket[]> {
   return executeQuery<RowDataPacket[]>(
-    'SELECT subgroup_id, name FROM equipment_subgroups WHERE group_id = ?',
+    `SELECT sg.subgroup_id, sg.name, COUNT(e.equipment_id) AS item_count
+     FROM equipment_subgroups sg
+     LEFT JOIN equipment e ON e.subgroup_id = sg.subgroup_id AND e.group_id = sg.group_id
+     WHERE sg.group_id = ?
+     GROUP BY sg.subgroup_id, sg.name`,
     [groupId],
   );
+}
+
+async function getUngroupedItemCount(groupId: number): Promise<number> {
+  const [row] = await executeQuery<RowDataPacket[]>(
+    'SELECT COUNT(*) AS cnt FROM equipment WHERE group_id = ? AND subgroup_id IS NULL',
+    [groupId],
+  );
+  return row?.['cnt'] ?? 0;
 }
 
 async function updateSubgroup(subgroupId: number, groupId: number, data: UpdateSubgroupDto): Promise<void> {
@@ -171,6 +183,60 @@ async function createItem(groupId: number, data: CreateEquipmentDto): Promise<nu
   return (result as any).insertId;
 }
 
+async function getItemsWithAvailability(
+  groupId: number,
+  pickupDatetime?: string,
+  returnDatetime?: string,
+  subgroupId?: number,
+  search?: string,
+): Promise<RowDataPacket[]> {
+  let query = `SELECT e.equipment_id, e.group_id, e.subgroup_id, e.parent_equipment_id, e.name, e.description, e.quantity, e.photo`;
+  if (pickupDatetime && returnDatetime) {
+    query += `,
+      GREATEST(0, e.quantity - COALESCE((
+        SELECT SUM(re.quantity)
+        FROM reservation_equipment re
+        JOIN reservations r ON re.reservation_id = r.reservation_id
+        WHERE re.equipment_id = e.equipment_id
+          AND r.state IN ('reserved', 'waiting_for_pickup', 'picked_up', 'waiting_for_return')
+          AND r.pickup_datetime < ?
+          AND r.return_datetime > ?
+      ), 0)
+      - COALESCE((
+        SELECT SUM(re.quantity)
+        FROM reservation_equipment re
+        JOIN reservations r ON re.reservation_id = r.reservation_id
+        WHERE re.equipment_id = e.parent_equipment_id
+          AND r.state IN ('reserved', 'waiting_for_pickup', 'picked_up', 'waiting_for_return')
+          AND r.pickup_datetime < ?
+          AND r.return_datetime > ?
+      ), 0)
+      ) AS available_quantity`;
+  }
+  query += ` FROM equipment e WHERE e.group_id = ?`;
+  const values: unknown[] = [];
+  if (pickupDatetime && returnDatetime) {
+    values.push(returnDatetime, pickupDatetime, returnDatetime, pickupDatetime);
+  }
+  values.push(groupId);
+
+  if (subgroupId !== undefined) {
+    if (subgroupId === -1) {
+      query += ' AND e.subgroup_id IS NULL';
+    } else {
+      query += ' AND e.subgroup_id = ?';
+      values.push(subgroupId);
+    }
+  }
+
+  if (search) {
+    query += ' AND e.name LIKE ?';
+    values.push(`%${search}%`);
+  }
+
+  return executeQuery<RowDataPacket[]>(query, values);
+}
+
 async function getItems(
   groupId: number,
   subgroupId?: number,
@@ -182,8 +248,12 @@ async function getItems(
   const values: unknown[] = [groupId];
 
   if (subgroupId !== undefined) {
-    query += ' AND e.subgroup_id = ?';
-    values.push(subgroupId);
+    if (subgroupId === -1) {
+      query += ' AND e.subgroup_id IS NULL';
+    } else {
+      query += ' AND e.subgroup_id = ?';
+      values.push(subgroupId);
+    }
   }
 
   if (search) {
@@ -247,6 +317,9 @@ async function updateItem(itemId: number, data: UpdateEquipmentDto): Promise<num
 async function deleteItem(itemId: number): Promise<number | null> {
   const groupId = await getItemGroupId(itemId);
   if (!groupId) return null;
+  // Clean up reservation references before deleting (FK constraint without CASCADE)
+  await executeQuery('DELETE FROM reservation_equipment WHERE equipment_id = ?', [itemId]);
+  // Equipment with parent_equipment_id = ? will be deleted by ON DELETE CASCADE
   await executeQuery('DELETE FROM equipment WHERE equipment_id = ?', [itemId]);
   dataVersionsService.touchEquipmentGroupItems(groupId).catch(() => {});
   return groupId;
@@ -362,6 +435,16 @@ async function ensureAttachmentColumn(): Promise<void> {
   });
 }
 
+async function ensureSubgroupIdColumn(): Promise<void> {
+  await executeQuery(
+    `ALTER TABLE equipment
+     ADD COLUMN subgroup_id INT DEFAULT NULL,
+     ADD FOREIGN KEY (subgroup_id) REFERENCES equipment_subgroups(subgroup_id) ON DELETE SET NULL`,
+  ).catch(() => {
+    // Column already exists
+  });
+}
+
 async function ensureTables(): Promise<void> {
   await executeQuery(
     `CREATE TABLE IF NOT EXISTS equipment_groups (
@@ -410,6 +493,7 @@ async function ensureTables(): Promise<void> {
 export default {
   ensureTables,
   ensureAttachmentColumn,
+  ensureSubgroupIdColumn,
   ensureDefaultReviewerColumn,
   isOrganizer,
   hasViewAccess,
@@ -419,6 +503,7 @@ export default {
   deleteGroup,
   createSubgroup,
   getSubgroups,
+  getUngroupedItemCount,
   updateSubgroup,
   deleteSubgroup,
   addMember,
@@ -427,6 +512,7 @@ export default {
   removeMember,
   createItem,
   getItems,
+  getItemsWithAvailability,
   getItemById,
   getItemGroupId,
   updateItem,
