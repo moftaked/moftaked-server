@@ -102,8 +102,11 @@ export async function getSubgroups(req: Request, res: Response, next: NextFuncti
     const groupId = parseIntParam(req.params['groupId']);
     if (groupId === undefined) return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid group ID'));
 
-    const subgroups = await equipmentService.getSubgroups(groupId);
-    res.status(StatusCodes.OK).json({ success: true, data: subgroups });
+    const [subgroups, ungroupedCount] = await Promise.all([
+      equipmentService.getSubgroups(groupId),
+      equipmentService.getUngroupedItemCount(groupId),
+    ]);
+    res.status(StatusCodes.OK).json({ success: true, data: subgroups, ungrouped_count: ungroupedCount });
   } catch (error) {
     next(error);
   }
@@ -220,8 +223,10 @@ export async function getItems(req: Request, res: Response, next: NextFunction) 
 
     const subgroupId = req.query['subgroupId'] !== undefined ? parseInt(req.query['subgroupId'] as string, 10) : undefined;
     const search = req.query['search'] as string | undefined;
+    const pickupDatetime = req.query['pickup_datetime'] as string | undefined;
+    const returnDatetime = req.query['return_datetime'] as string | undefined;
 
-    const items = await equipmentService.getItems(groupId, subgroupId, search);
+    const items = await equipmentService.getItemsWithAvailability(groupId, pickupDatetime, returnDatetime, subgroupId, search);
     res.status(StatusCodes.OK).json({ success: true, data: items });
   } catch (error) {
     next(error);

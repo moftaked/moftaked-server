@@ -5,6 +5,22 @@ import reservationsService from '../services/reservations.service';
 
 import type { ReservationState } from '../types';
 
+export async function reopenReservation(req: Request, res: Response, next: NextFunction) {
+  try {
+    const reservationId = parseIntParam(req.params['reservationId']);
+    if (reservationId === undefined) {
+      return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid reservation ID'));
+    }
+
+    const userId: number = res.locals['user']['sub'];
+    await reservationsService.reopenReservation(reservationId, userId);
+    res.status(StatusCodes.OK).json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+}
+
+
 function parseIntParam(val: string | undefined): number | undefined {
   if (val === undefined) return undefined;
   const n = parseInt(val, 10);
@@ -27,6 +43,7 @@ export async function getReservations(req: Request, res: Response, next: NextFun
   try {
     const userId: number = res.locals['user']['sub'];
     const classId = parseIntParam(req.query['class_id'] as string | undefined);
+    const groupId = parseIntParam(req.query['group_id'] as string | undefined);
     const state = req.query['state'] as ReservationState | undefined;
     const role = req.query['role'] as 'created' | 'receiving' | 'reviewer' | 'organizer' | undefined;
     const fromDate = req.query['from_date'] as string | undefined;
@@ -34,6 +51,7 @@ export async function getReservations(req: Request, res: Response, next: NextFun
 
     const reservations = await reservationsService.getReservations(userId, {
       class_id: classId,
+      group_id: groupId,
       state,
       role,
       from_date: fromDate,
@@ -52,7 +70,8 @@ export async function getReservationById(req: Request, res: Response, next: Next
       return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid reservation ID'));
     }
 
-    const reservation = await reservationsService.getReservationById(reservationId);
+    const userId: number = res.locals['user']['sub'];
+    const reservation = await reservationsService.getReservationById(reservationId, userId);
     if (!reservation) {
       return next(createHttpError(StatusCodes.NOT_FOUND, 'Reservation not found'));
     }
@@ -254,6 +273,36 @@ export async function rejectReservation(req: Request, res: Response, next: NextF
 
 // ---- State transitions ----
 
+export async function markWaitingForPickup(req: Request, res: Response, next: NextFunction) {
+  try {
+    const reservationId = parseIntParam(req.params['reservationId']);
+    if (reservationId === undefined) {
+      return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid reservation ID'));
+    }
+
+    const userId: number = res.locals['user']['sub'];
+    await reservationsService.markWaitingForPickup(reservationId, userId);
+    res.status(StatusCodes.OK).json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function markWaitingForReturn(req: Request, res: Response, next: NextFunction) {
+  try {
+    const reservationId = parseIntParam(req.params['reservationId']);
+    if (reservationId === undefined) {
+      return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid reservation ID'));
+    }
+
+    const userId: number = res.locals['user']['sub'];
+    await reservationsService.markWaitingForReturn(reservationId, userId);
+    res.status(StatusCodes.OK).json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function markPickedUp(req: Request, res: Response, next: NextFunction) {
   try {
     const reservationId = parseIntParam(req.params['reservationId']);
@@ -263,6 +312,21 @@ export async function markPickedUp(req: Request, res: Response, next: NextFuncti
 
     const userId: number = res.locals['user']['sub'];
     await reservationsService.markPickedUp(reservationId, userId);
+    res.status(StatusCodes.OK).json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function unsubmitReservation(req: Request, res: Response, next: NextFunction) {
+  try {
+    const reservationId = parseIntParam(req.params['reservationId']);
+    if (reservationId === undefined) {
+      return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid reservation ID'));
+    }
+
+    const userId: number = res.locals['user']['sub'];
+    await reservationsService.unsubmitReservation(reservationId, userId);
     res.status(StatusCodes.OK).json({ success: true });
   } catch (error) {
     next(error);
@@ -283,35 +347,3 @@ export async function markReturned(req: Request, res: Response, next: NextFuncti
     next(error);
   }
 }
-
-export async function completeReservation(req: Request, res: Response, next: NextFunction) {
-  try {
-    const reservationId = parseIntParam(req.params['reservationId']);
-    if (reservationId === undefined) {
-      return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid reservation ID'));
-    }
-
-    const userId: number = res.locals['user']['sub'];
-    await reservationsService.completeReservation(reservationId, userId);
-    res.status(StatusCodes.OK).json({ success: true });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function reopenReservation(req: Request, res: Response, next: NextFunction) {
-  try {
-    const reservationId = parseIntParam(req.params['reservationId']);
-    if (reservationId === undefined) {
-      return next(createHttpError(StatusCodes.BAD_REQUEST, 'Invalid reservation ID'));
-    }
-
-    const userId: number = res.locals['user']['sub'];
-    await reservationsService.reopenReservation(reservationId, userId);
-    res.status(StatusCodes.OK).json({ success: true });
-  } catch (error) {
-    next(error);
-  }
-}
-
-

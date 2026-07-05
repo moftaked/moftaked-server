@@ -24,14 +24,16 @@ import {
   excludeAttachment,
   includeAttachment,
   submitReservation,
+  unsubmitReservation,
   getReservationReviewers,
   addReviewer,
   removeReviewer,
   approveReservation,
   rejectReservation,
+  markWaitingForPickup,
+  markWaitingForReturn,
   markPickedUp,
   markReturned,
-  completeReservation,
   reopenReservation,
 } from '../controllers/reservations.controller';
 
@@ -60,6 +62,7 @@ reservationsRouter.delete('/:reservationId', deleteReservation);
 
 // ---- Submit ----
 reservationsRouter.post('/:reservationId/submit', submitReservation);
+reservationsRouter.post('/:reservationId/unsubmit', unsubmitReservation);
 
 // ---- Equipment items ----
 reservationsRouter.post(
@@ -118,21 +121,27 @@ reservationsRouter.post(
 
 // ---- State transitions (organizer only) ----
 reservationsRouter.post(
+  '/:reservationId/mark-for-pickup',
+  isReservationOrganizer(),
+  markWaitingForPickup,
+);
+
+reservationsRouter.post(
   '/:reservationId/pick-up',
   isReservationOrganizer(),
   markPickedUp,
 );
 
 reservationsRouter.post(
-  '/:reservationId/return',
+  '/:reservationId/mark-for-return',
   isReservationOrganizer(),
-  markReturned,
+  markWaitingForReturn,
 );
 
 reservationsRouter.post(
-  '/:reservationId/complete',
+  '/:reservationId/return',
   isReservationOrganizer(),
-  completeReservation,
+  markReturned,
 );
 
 reservationsRouter.post(

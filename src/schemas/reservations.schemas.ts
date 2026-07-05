@@ -6,6 +6,7 @@ export const createReservationSchema = z.object({
   pickup_datetime: z.string(),
   return_datetime: z.string(),
   notes: z.string().optional().nullable(),
+  group_id: z.number().int().positive(),
 });
 
 export const updateReservationSchema = z.object({
